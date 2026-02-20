@@ -1,0 +1,21 @@
+{
+  "name": "@kick-summit/infra",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf cdk.out dist .turbo"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2",
+    "constructs": "^10"
+  },
+  "devDependencies": {
+    "aws-cdk": "^2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7"
+  }
+}

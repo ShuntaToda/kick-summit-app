@@ -1,0 +1,30 @@
+{
+  "name": "kick-summit-app",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "db:start": "docker compose up -d",
+    "db:stop": "docker compose down",
+    "db:seed": "tsx scripts/seed-local.ts --local",
+    "db:seed:remote": "tsx scripts/seed-local.ts",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "clean": "turbo clean"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "turbo": "^2.8",
+    "typescript": "^5.7"
+  },
+  "packageManager": "pnpm@10.4.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "unrs-resolver"
+    ]
+  }
+}
