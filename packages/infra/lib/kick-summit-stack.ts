@@ -3,8 +3,6 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as apigwv2Integrations from "aws-cdk-lib/aws-apigatewayv2-integrations";
-import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
-import * as cloudfrontOrigins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as path from "path";
 import type { Construct } from "constructs";
 
@@ -66,30 +64,8 @@ export class KickSummitStack extends cdk.Stack {
     });
 
     // ==========================================
-    // CloudFront
-    // ==========================================
-    const distribution = new cloudfront.Distribution(this, "Distribution", {
-      defaultBehavior: {
-        origin: new cloudfrontOrigins.HttpOrigin(
-          `${httpApi.httpApiId}.execute-api.${this.region}.amazonaws.com`
-        ),
-        viewerProtocolPolicy:
-          cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-        originRequestPolicy:
-          cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-      },
-    });
-
-    // ==========================================
     // Outputs
     // ==========================================
-    new cdk.CfnOutput(this, "CloudFrontUrl", {
-      value: `https://${distribution.distributionDomainName}`,
-      description: "CloudFront Distribution URL",
-    });
-
     new cdk.CfnOutput(this, "ApiUrl", {
       value: httpApi.url ?? "",
       description: "API Gateway URL",
