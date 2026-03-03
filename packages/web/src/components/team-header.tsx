@@ -5,7 +5,7 @@ import { useTeam } from "@/hooks/use-team";
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  teams: { id: string; name: string }[];
+  teams: { id: string; name: string; color: string }[];
 }
 
 export function TeamHeader({ teams }: Props) {
@@ -20,6 +20,10 @@ export function TeamHeader({ teams }: Props) {
       </div>
       {myTeam && (
         <Button variant="outline" size="sm" onClick={clearTeam}>
+          <span
+            className="mr-1.5 inline-block h-3 w-3 shrink-0 rounded-full"
+            style={{ backgroundColor: myTeam.color }}
+          />
           {myTeam.name} ▼
         </Button>
       )}

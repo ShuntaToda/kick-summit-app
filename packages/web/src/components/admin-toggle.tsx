@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Lock, PenLine, ChevronRight, LogOut } from "lucide-react";
+import { Lock, PenLine, ChevronRight, LogOut, Settings, Users, Layers, Calendar } from "lucide-react";
 import { useAdmin } from "@/hooks/use-admin";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +35,46 @@ export function AdminToggle() {
   if (isAdmin) {
     return (
       <div className="space-y-1">
+        <Link
+          href="/admin/settings"
+          className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
+        >
+          <div className="flex items-center gap-3">
+            <Settings className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium">大会設定</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+        <Link
+          href="/admin/groups"
+          className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
+        >
+          <div className="flex items-center gap-3">
+            <Layers className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium">グループ管理</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+        <Link
+          href="/admin/teams"
+          className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
+        >
+          <div className="flex items-center gap-3">
+            <Users className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium">チーム管理</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+        <Link
+          href="/admin/matches"
+          className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
+        >
+          <div className="flex items-center gap-3">
+            <Calendar className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium">試合管理</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
         <Link
           href="/admin/score"
           className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"

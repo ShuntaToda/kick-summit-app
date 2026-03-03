@@ -4,6 +4,7 @@ import type { Team } from "../entities/team";
 export interface StandingsRow {
   teamId: string;
   teamName: string;
+  teamColor: string;
   played: number;
   won: number;
   drawn: number;
@@ -17,17 +18,18 @@ export interface StandingsRow {
 export function computeStandings(
   matches: Match[],
   teams: Team[],
-  group: string
+  groupId: string
 ): StandingsRow[] {
-  const groupTeams = teams.filter((t) => t.group === group);
+  const groupTeams = teams.filter((t) => t.groupId === groupId);
   const groupMatches = matches.filter(
-    (m) => m.type === "league" && m.group === group && m.status === "finished"
+    (m) => m.type === "league" && m.groupId === groupId && m.status === "finished"
   );
 
   const rows: StandingsRow[] = groupTeams.map((team) => {
     const row: StandingsRow = {
       teamId: team.id,
       teamName: team.name,
+      teamColor: team.color,
       played: 0,
       won: 0,
       drawn: 0,

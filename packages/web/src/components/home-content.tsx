@@ -1,110 +1,202 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useTeam } from "@/hooks/use-team";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Countdown } from "@/components/countdown";
 import { TeamHeader } from "@/components/team-header";
+import { LeagueCrossTable } from "@/components/league-cross-table";
 import type { Team } from "@/server/domain/entities/team";
 import type { Match } from "@/server/domain/entities/match";
+import type { Group } from "@/server/domain/entities/group";
 import type { StandingsRow } from "@/server/domain/services/standings-service";
 
 interface Props {
   teams: Team[];
   matches: Match[];
   standings: Record<string, StandingsRow[]>;
+  groups: Group[];
 }
 
-export function HomeContent({ teams, matches, standings }: Props) {
+function getMatchState(match: Match, now: number) {
+  if (!match.scheduledTime) return "upcoming";
+  const start = new Date(match.scheduledTime).getTime();
+  if (isNaN(start)) return "upcoming";
+  const end = start + match.durationMinutes * 60 * 1000;
+  if (now >= start && now < end) return "playing";
+  if (now < start) return "upcoming";
+  return "finished";
+}
+
+export function HomeContent({ teams, matches, standings, groups }: Props) {
   const { selectedTeamId } = useTeam();
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const teamMap = useMemo(
     () => new Map(teams.map((t) => [t.id, t])),
     [teams]
   );
 
+  const groupNameMap = useMemo(
+    () => new Map(groups.map((g) => [g.id, g.name])),
+    [groups]
+  );
+
   const myTeam = selectedTeamId ? teamMap.get(selectedTeamId) : undefined;
 
-  const nextMatch = useMemo(() => {
-    if (!selectedTeamId) return null;
-    return (
-      matches
-        .filter(
-          (m) =>
-            m.status !== "finished" &&
-            (m.teamAId === selectedTeamId || m.teamBId === selectedTeamId)
-        )
-        .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime))[0] ??
-      null
-    );
+  const upcomingMatches = useMemo(() => {
+    if (!selectedTeamId) return [];
+    return matches
+      .filter(
+        (m) =>
+          m.status !== "finished" &&
+          (m.teamAId === selectedTeamId || m.teamBId === selectedTeamId || m.refereeTeamId === selectedTeamId)
+      )
+      .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime))
+;
   }, [matches, selectedTeamId]);
 
-  const lastResult = useMemo(() => {
-    if (!selectedTeamId) return null;
-    return (
-      matches
-        .filter(
-          (m) =>
-            m.status === "finished" &&
-            (m.teamAId === selectedTeamId || m.teamBId === selectedTeamId)
-        )
-        .sort((a, b) => b.scheduledTime.localeCompare(a.scheduledTime))[0] ??
-      null
-    );
-  }, [matches, selectedTeamId]);
-
-  const groupStandings = myTeam?.group
-    ? standings[myTeam.group] ?? []
+  const groupStandings = myTeam?.groupId
+    ? standings[myTeam.groupId] ?? []
     : [];
 
-  function teamName(id: string) {
+  const groupTeams = useMemo(() => {
+    if (!myTeam?.groupId) return [];
+    return teams.filter((t) => t.groupId === myTeam.groupId);
+  }, [teams, myTeam?.groupId]);
+
+  const groupMatches = useMemo(() => {
+    if (!myTeam?.groupId) return [];
+    return matches.filter(
+      (m) => m.type === "league" && m.groupId === myTeam.groupId,
+    );
+  }, [matches, myTeam?.groupId]);
+
+  function teamName(id: string | null) {
+    if (!id) return "TBD";
     return teamMap.get(id)?.name ?? id;
+  }
+
+  function teamColor(id: string | null) {
+    if (!id) return "#888";
+    return teamMap.get(id)?.color ?? "#888";
+  }
+
+  function TeamLabel({ id }: { id: string | null }) {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          className="inline-block h-3 w-3 shrink-0 rounded-full"
+          style={{ backgroundColor: teamColor(id) }}
+        />
+        {teamName(id)}
+      </span>
+    );
+  }
+
+  function groupName(groupId: string | null) {
+    if (!groupId) return "";
+    return groupNameMap.get(groupId) ?? groupId;
   }
 
   return (
     <div className="space-y-4">
       <TeamHeader teams={teams} />
 
-      {/* 次の試合 */}
-      {nextMatch && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              次の試合
+      {/* 直近の試合 */}
+      {upcomingMatches.length > 0 && (
+        <Card className="gap-2 py-3">
+          <CardHeader className="pb-0">
+            <CardTitle className="text-sm font-semibold text-foreground">
+              直近の試合
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="text-sm text-muted-foreground">
-              {new Date(nextMatch.scheduledTime).toLocaleTimeString("ja-JP", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}{" "}
-              {nextMatch.court}
-            </div>
-            <div className="flex items-center justify-center gap-4 text-lg font-bold">
-              <span>{teamName(nextMatch.teamAId)}</span>
-              <span className="text-muted-foreground">vs</span>
-              <span>{teamName(nextMatch.teamBId)}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <Badge variant="outline">
-                {nextMatch.type === "league"
-                  ? `予選 グループ${nextMatch.group}`
-                  : "決勝トーナメント"}
-              </Badge>
-              {nextMatch.status === "scheduled" && (
-                <Countdown targetTime={nextMatch.scheduledTime} />
-              )}
-              {nextMatch.status === "ongoing" && (
-                <Badge variant="destructive">試合中</Badge>
-              )}
-            </div>
+          <CardContent className="space-y-4">
+            {upcomingMatches.map((match, idx) => {
+              const isRefereeOnly =
+                match.refereeTeamId === selectedTeamId &&
+                match.teamAId !== selectedTeamId &&
+                match.teamBId !== selectedTeamId;
+              const isOngoing = getMatchState(match, now) === "playing";
+              return (
+              <div key={match.id} className={idx > 0 ? "border-t pt-4" : ""}>
+                <div className={`space-y-2 ${
+                  isOngoing
+                    ? "rounded-lg border-2 border-primary p-3"
+                    : isRefereeOnly
+                      ? "rounded-lg border border-dashed bg-muted/50 p-3"
+                      : ""
+                }`}>
+                  {isRefereeOnly && !isOngoing && (
+                    <Badge variant="outline" className="mx-auto flex w-fit">
+                      審判担当
+                    </Badge>
+                  )}
+                  <div className="text-sm text-muted-foreground">
+                    {match.scheduledTime && !isNaN(new Date(match.scheduledTime).getTime()) && (
+                      <>
+                        {new Date(match.scheduledTime).toLocaleTimeString("ja-JP", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}{" "}
+                      </>
+                    )}
+                    {match.court}
+                  </div>
+                  <div className={`flex items-center justify-center gap-4 ${isRefereeOnly ? "text-sm font-normal text-muted-foreground" : "text-lg font-bold"}`}>
+                    <TeamLabel id={match.teamAId} />
+                    <span className="text-muted-foreground">vs</span>
+                    <TeamLabel id={match.teamBId} />
+                  </div>
+                  {isOngoing && (
+                    <div className="flex items-center justify-center gap-3 text-lg font-bold">
+                      <span>{match.scoreA ?? 0}</span>
+                      <span className="text-sm text-muted-foreground">-</span>
+                      <span>{match.scoreB ?? 0}</span>
+                    </div>
+                  )}
+                  {match.refereeTeamId && !isRefereeOnly && (
+                    <div className="text-center text-xs text-muted-foreground">
+                      審判: {teamName(match.refereeTeamId)}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-sm">
+                    <Badge variant="outline">
+                      {match.type === "league"
+                        ? `予選 ${groupName(match.groupId)}`
+                        : "決勝トーナメント"}
+                    </Badge>
+                    {isOngoing ? (
+                      <Badge variant="destructive" className="rounded-sm text-[10px] px-1.5 py-0">
+                        試合中
+                      </Badge>
+                    ) : getMatchState(match, now) === "upcoming" ? (
+                      <Countdown targetTime={match.scheduledTime} />
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}
 
-      {!nextMatch && selectedTeamId && (
+      {upcomingMatches.length === 0 && selectedTeamId && (
         <Card>
           <CardContent className="py-6 text-center text-muted-foreground">
             全試合終了
@@ -112,52 +204,84 @@ export function HomeContent({ teams, matches, standings }: Props) {
         </Card>
       )}
 
-      {/* 直近の結果 */}
-      {lastResult && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              直近の結果
+      {/* グループリーグ表 */}
+      {groupStandings.length > 0 && (
+        <Card className="gap-2 py-3">
+          <CardHeader className="pb-0">
+            <CardTitle className="text-sm font-semibold text-foreground">
+              {groupName(myTeam?.groupId ?? null)} リーグ表
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center gap-4 text-lg font-bold">
-              <span>{teamName(lastResult.teamAId)}</span>
-              <span>
-                {lastResult.scoreA} - {lastResult.scoreB}
-              </span>
-              <span>{teamName(lastResult.teamBId)}</span>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8">#</TableHead>
+                    <TableHead>チーム</TableHead>
+                    <TableHead className="w-8 text-center">試</TableHead>
+                    <TableHead className="w-8 text-center">勝</TableHead>
+                    <TableHead className="w-8 text-center">分</TableHead>
+                    <TableHead className="w-8 text-center">負</TableHead>
+                    <TableHead className="w-10 text-center">得失</TableHead>
+                    <TableHead className="w-10 text-center font-bold">勝点</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {groupStandings.map((row, i) => (
+                    <TableRow
+                      key={row.teamId}
+                      className={
+                        row.teamId === selectedTeamId
+                          ? "bg-primary/10 font-semibold"
+                          : ""
+                      }
+                    >
+                      <TableCell>{i + 1}</TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span
+                            className="inline-block h-3 w-3 shrink-0 rounded-full"
+                            style={{ backgroundColor: row.teamColor }}
+                          />
+                          {row.teamName}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">{row.played}</TableCell>
+                      <TableCell className="text-center">{row.won}</TableCell>
+                      <TableCell className="text-center">{row.drawn}</TableCell>
+                      <TableCell className="text-center">{row.lost}</TableCell>
+                      <TableCell className="text-center">
+                        {row.goalDifference > 0
+                          ? `+${row.goalDifference}`
+                          : row.goalDifference}
+                      </TableCell>
+                      <TableCell className="text-center font-bold">
+                        {row.points}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* グループ内順位 */}
-      {groupStandings.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              グループ{myTeam?.group} 順位
+      {/* 対戦表 */}
+      {groupTeams.length > 1 && (
+        <Card className="gap-2 py-3">
+          <CardHeader className="pb-0">
+            <CardTitle className="text-sm font-semibold text-foreground">
+              {groupName(myTeam?.groupId ?? null)} 対戦表
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1">
-            {groupStandings.map((row, i) => (
-              <div
-                key={row.teamId}
-                className={`flex items-center justify-between rounded-md px-3 py-1.5 text-sm ${
-                  row.teamId === selectedTeamId
-                    ? "bg-primary/10 font-semibold"
-                    : ""
-                }`}
-              >
-                <span>
-                  {i + 1}位 {row.teamName}
-                </span>
-                <span className="text-muted-foreground">
-                  勝点{row.points}
-                </span>
-              </div>
-            ))}
+          <CardContent className="p-0 pb-2">
+            <LeagueCrossTable
+              teams={groupTeams}
+              matches={groupMatches}
+              highlightTeamId={selectedTeamId}
+            />
           </CardContent>
         </Card>
       )}

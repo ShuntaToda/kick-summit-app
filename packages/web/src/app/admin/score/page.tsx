@@ -1,17 +1,27 @@
 export const dynamic = "force-dynamic";
 
-import { getTeams } from "@/server/application/get-teams";
-import { getMatches } from "@/server/application/get-matches";
+import { Suspense } from "react";
+import * as container from "@/server/container";
 import { ScoreInputContent } from "@/components/score-input-content";
 import { Refresher } from "@/components/refresher";
+import { CardSkeleton } from "@/components/section-skeleton";
 
-export default async function ScoreInputPage() {
-  const [teams, matches] = await Promise.all([getTeams(), getMatches()]);
+async function ScoreData() {
+  const [teams, matches] = await Promise.all([
+    container.getTeams(),
+    container.getMatches(),
+  ]);
 
+  return <ScoreInputContent teams={teams} matches={matches} />;
+}
+
+export default function ScoreInputPage() {
   return (
     <>
       <Refresher />
-      <ScoreInputContent teams={teams} matches={matches} />
+      <Suspense fallback={<CardSkeleton count={4} />}>
+        <ScoreData />
+      </Suspense>
     </>
   );
 }

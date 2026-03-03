@@ -10,23 +10,84 @@ export class KickSummitStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    const prefix = "kick-summit";
+
     // ==========================================
-    // DynamoDB シングルテーブル
+    // DynamoDB Tables
     // ==========================================
-    const table = new dynamodb.Table(this, "FutsalTournamentTable", {
-      tableName: "futsal-tournament",
-      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
+
+    // --- Tournaments ---
+    const tournamentsTable = new dynamodb.Table(this, "TournamentsTable", {
+      tableName: `${prefix}-tournaments`,
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // GSI: ステータス + 時刻でタイムテーブル取得用
-    table.addGlobalSecondaryIndex({
-      indexName: "status-scheduledTime-index",
-      partitionKey: { name: "status", type: dynamodb.AttributeType.STRING },
+    // --- Groups ---
+    const groupsTable = new dynamodb.Table(this, "GroupsTable", {
+      tableName: `${prefix}-groups`,
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    groupsTable.addGlobalSecondaryIndex({
+      indexName: "tournamentId-index",
+      partitionKey: { name: "tournamentId", type: dynamodb.AttributeType.STRING },
+    });
+
+    // --- Teams ---
+    const teamsTable = new dynamodb.Table(this, "TeamsTable", {
+      tableName: `${prefix}-teams`,
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    teamsTable.addGlobalSecondaryIndex({
+      indexName: "tournamentId-index",
+      partitionKey: { name: "tournamentId", type: dynamodb.AttributeType.STRING },
+    });
+
+    teamsTable.addGlobalSecondaryIndex({
+      indexName: "groupId-index",
+      partitionKey: { name: "groupId", type: dynamodb.AttributeType.STRING },
+    });
+
+    // --- Matches ---
+    const matchesTable = new dynamodb.Table(this, "MatchesTable", {
+      tableName: `${prefix}-matches`,
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    matchesTable.addGlobalSecondaryIndex({
+      indexName: "schedule-index",
+      partitionKey: { name: "tournamentId", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "scheduledTime", type: dynamodb.AttributeType.STRING },
     });
+
+    matchesTable.addGlobalSecondaryIndex({
+      indexName: "group-index",
+      partitionKey: { name: "groupId", type: dynamodb.AttributeType.STRING },
+    });
+
+    // --- Brackets ---
+    const bracketsTable = new dynamodb.Table(this, "BracketsTable", {
+      tableName: `${prefix}-brackets`,
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    bracketsTable.addGlobalSecondaryIndex({
+      indexName: "tournamentId-index",
+      partitionKey: { name: "tournamentId", type: dynamodb.AttributeType.STRING },
+    });
+
+    const allTables = [tournamentsTable, groupsTable, teamsTable, matchesTable, bracketsTable];
 
     // ==========================================
     // Lambda (Next.js + Lambda Web Adapter)
@@ -45,12 +106,14 @@ export class KickSummitStack extends cdk.Stack {
       environment: {
         AWS_LWA_PORT: "8080",
         AWS_LWA_READINESS_CHECK_PATH: "/",
-        TABLE_NAME: table.tableName,
+        TABLE_PREFIX: prefix,
       },
     });
 
-    // Lambda に DynamoDB の読み書き権限を付与
-    table.grantReadWriteData(webFunction);
+    // Lambda に全テーブルの読み書き権限を付与
+    for (const table of allTables) {
+      table.grantReadWriteData(webFunction);
+    }
 
     // ==========================================
     // API Gateway (HTTP API)
@@ -71,9 +134,9 @@ export class KickSummitStack extends cdk.Stack {
       description: "API Gateway URL",
     });
 
-    new cdk.CfnOutput(this, "TableName", {
-      value: table.tableName,
-      description: "DynamoDB Table Name",
+    new cdk.CfnOutput(this, "TablePrefix", {
+      value: prefix,
+      description: "DynamoDB Table Prefix",
     });
   }
 }

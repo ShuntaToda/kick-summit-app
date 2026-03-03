@@ -11,18 +11,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { LeagueCrossTable } from "@/components/league-cross-table";
 import type { StandingsRow } from "@/server/domain/services/standings-service";
+import type { Team } from "@/server/domain/entities/team";
+import type { Match } from "@/server/domain/entities/match";
 
 interface Props {
   standings: Record<string, StandingsRow[]>;
+  groupNames: Record<string, string>;
+  teams: Team[];
+  matches: Match[];
 }
 
-export function LeagueTabs({ standings }: Props) {
+export function LeagueTabs({ standings, groupNames, teams, matches }: Props) {
   const { selectedTeamId } = useTeam();
-  const groups = Object.keys(standings).sort();
-  const [tab, setTab] = useState(groups[0] ?? "");
+  const groupIds = Object.keys(standings).sort();
+  const [tab, setTab] = useState(groupIds[0] ?? "");
 
-  if (groups.length === 0) {
+  if (groupIds.length === 0) {
     return (
       <p className="py-8 text-center text-muted-foreground">
         データがありません
@@ -33,14 +39,14 @@ export function LeagueTabs({ standings }: Props) {
   return (
     <Tabs value={tab} onValueChange={setTab}>
       <TabsList className="w-full">
-        {groups.map((g) => (
-          <TabsTrigger key={g} value={g} className="flex-1">
-            グループ{g}
+        {groupIds.map((gId) => (
+          <TabsTrigger key={gId} value={gId} className="flex-1">
+            {groupNames[gId] ?? gId}
           </TabsTrigger>
         ))}
       </TabsList>
-      {groups.map((g) => (
-        <TabsContent key={g} value={g} className="mt-3">
+      {groupIds.map((gId) => (
+        <TabsContent key={gId} value={gId} className="mt-3 space-y-4">
           <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
@@ -58,7 +64,7 @@ export function LeagueTabs({ standings }: Props) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(standings[g] ?? []).map((row, i) => (
+                {(standings[gId] ?? []).map((row, i) => (
                   <TableRow
                     key={row.teamId}
                     className={
@@ -68,7 +74,15 @@ export function LeagueTabs({ standings }: Props) {
                     }
                   >
                     <TableCell>{i + 1}</TableCell>
-                    <TableCell>{row.teamName}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span
+                          className="inline-block h-3 w-3 shrink-0 rounded-full"
+                          style={{ backgroundColor: row.teamColor }}
+                        />
+                        {row.teamName}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-center">{row.played}</TableCell>
                     <TableCell className="text-center">{row.won}</TableCell>
                     <TableCell className="text-center">{row.drawn}</TableCell>
@@ -85,6 +99,15 @@ export function LeagueTabs({ standings }: Props) {
                 ))}
               </TableBody>
             </Table>
+          </div>
+          <div className="overflow-x-auto rounded-md border">
+            <LeagueCrossTable
+              teams={teams.filter((t) => t.groupId === gId)}
+              matches={matches.filter(
+                (m) => m.type === "league" && m.groupId === gId,
+              )}
+              highlightTeamId={selectedTeamId}
+            />
           </div>
         </TabsContent>
       ))}

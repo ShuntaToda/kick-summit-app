@@ -5,6 +5,9 @@ export const tournamentSchema = z.object({
   name: z.string().min(1),
   date: z.string().min(1),
   passwordHash: z.string(),
+  description: z.string().default(""),
+  courtFee: z.number().min(0),
+  partyFeePerPerson: z.number().min(0),
 });
 
 export type Tournament = z.infer<typeof tournamentSchema>;

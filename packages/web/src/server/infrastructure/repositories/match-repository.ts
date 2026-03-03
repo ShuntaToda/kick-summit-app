@@ -1,10 +1,11 @@
 import {
+  DeleteCommand,
   GetCommand,
   PutCommand,
   QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { docClient, TABLE_NAME, pk } from "../dynamodb-client";
+import { docClient, TABLE_NAMES } from "../dynamodb-client";
 import {
   matchSchema,
   matchStatusSchema,
@@ -14,13 +15,26 @@ import {
 } from "../../domain/entities/match";
 
 export class DynamoMatchRepository implements MatchRepository {
-  async findAll(): Promise<Match[]> {
+  async findAll(tournamentId: string): Promise<Match[]> {
     const result = await docClient.send(
       new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
-        ExpressionAttributeValues: { ":pk": pk(), ":sk": "MATCH#" },
-      })
+        TableName: TABLE_NAMES.matches,
+        IndexName: "schedule-index",
+        KeyConditionExpression: "tournamentId = :tid",
+        ExpressionAttributeValues: { ":tid": tournamentId },
+      }),
+    );
+    return (result.Items ?? []).map((item) => matchSchema.parse(item));
+  }
+
+  async findByGroupId(groupId: string): Promise<Match[]> {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAMES.matches,
+        IndexName: "group-index",
+        KeyConditionExpression: "groupId = :gid",
+        ExpressionAttributeValues: { ":gid": groupId },
+      }),
     );
     return (result.Items ?? []).map((item) => matchSchema.parse(item));
   }
@@ -28,9 +42,9 @@ export class DynamoMatchRepository implements MatchRepository {
   async findById(id: string): Promise<Match | null> {
     const result = await docClient.send(
       new GetCommand({
-        TableName: TABLE_NAME,
-        Key: { PK: pk(), SK: `MATCH#${id}` },
-      })
+        TableName: TABLE_NAMES.matches,
+        Key: { id },
+      }),
     );
     if (!result.Item) return null;
     return matchSchema.parse(result.Item);
@@ -40,13 +54,9 @@ export class DynamoMatchRepository implements MatchRepository {
     const validated = matchSchema.parse(match);
     await docClient.send(
       new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          ...validated,
-          PK: pk(),
-          SK: `MATCH#${validated.id}`,
-        },
-      })
+        TableName: TABLE_NAMES.matches,
+        Item: validated,
+      }),
     );
   }
 
@@ -56,14 +66,13 @@ export class DynamoMatchRepository implements MatchRepository {
     scoreB: number,
     halfScoreA: number | null,
     halfScoreB: number | null,
-    status: MatchStatus
+    status: MatchStatus,
   ): Promise<void> {
     matchStatusSchema.parse(status);
-
     await docClient.send(
       new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: { PK: pk(), SK: `MATCH#${matchId}` },
+        TableName: TABLE_NAMES.matches,
+        Key: { id: matchId },
         UpdateExpression:
           "SET scoreA = :sa, scoreB = :sb, halfScoreA = :ha, halfScoreB = :hb, #st = :st",
         ExpressionAttributeNames: { "#st": "status" },
@@ -74,21 +83,29 @@ export class DynamoMatchRepository implements MatchRepository {
           ":hb": halfScoreB,
           ":st": status,
         },
-      })
+      }),
     );
   }
 
   async updateStatus(matchId: string, status: MatchStatus): Promise<void> {
     matchStatusSchema.parse(status);
-
     await docClient.send(
       new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: { PK: pk(), SK: `MATCH#${matchId}` },
+        TableName: TABLE_NAMES.matches,
+        Key: { id: matchId },
         UpdateExpression: "SET #st = :st",
         ExpressionAttributeNames: { "#st": "status" },
         ExpressionAttributeValues: { ":st": status },
-      })
+      }),
+    );
+  }
+
+  async delete(id: string): Promise<void> {
+    await docClient.send(
+      new DeleteCommand({
+        TableName: TABLE_NAMES.matches,
+        Key: { id },
+      }),
     );
   }
 }

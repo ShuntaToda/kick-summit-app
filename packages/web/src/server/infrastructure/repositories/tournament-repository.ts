@@ -1,5 +1,5 @@
 import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { docClient, TABLE_NAME, pk } from "../dynamodb-client";
+import { docClient, TABLE_NAMES } from "../dynamodb-client";
 import {
   tournamentSchema,
   type Tournament,
@@ -10,9 +10,9 @@ export class DynamoTournamentRepository implements TournamentRepository {
   async findById(id: string): Promise<Tournament | null> {
     const result = await docClient.send(
       new GetCommand({
-        TableName: TABLE_NAME,
-        Key: { PK: pk(), SK: "METADATA" },
-      })
+        TableName: TABLE_NAMES.tournaments,
+        Key: { id },
+      }),
     );
     if (!result.Item) return null;
     return tournamentSchema.parse(result.Item);
@@ -22,9 +22,9 @@ export class DynamoTournamentRepository implements TournamentRepository {
     const validated = tournamentSchema.parse(tournament);
     await docClient.send(
       new PutCommand({
-        TableName: TABLE_NAME,
-        Item: { PK: pk(), SK: "METADATA", ...validated },
-      })
+        TableName: TABLE_NAMES.tournaments,
+        Item: validated,
+      }),
     );
   }
 }

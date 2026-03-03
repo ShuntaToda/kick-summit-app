@@ -1,22 +1,31 @@
 export const dynamic = "force-dynamic";
 
-import { getTeams } from "@/server/application/get-teams";
-import { getMatches } from "@/server/application/get-matches";
-import { getStandings } from "@/server/application/get-standings";
+import { Suspense } from "react";
+import * as container from "@/server/container";
 import { HomeContent } from "@/components/home-content";
 import { Refresher } from "@/components/refresher";
+import { CardSkeleton } from "@/components/section-skeleton";
 
-export default async function HomePage() {
-  const [teams, matches, standings] = await Promise.all([
-    getTeams(),
-    getMatches(),
-    getStandings(),
+async function HomeData() {
+  const [teams, matches, standings, groups] = await Promise.all([
+    container.getTeams(),
+    container.getMatches(),
+    container.getStandings(),
+    container.getGroups(),
   ]);
 
   return (
+    <HomeContent teams={teams} matches={matches} standings={standings} groups={groups} />
+  );
+}
+
+export default function HomePage() {
+  return (
     <>
       <Refresher />
-      <HomeContent teams={teams} matches={matches} standings={standings} />
+      <Suspense fallback={<CardSkeleton count={4} />}>
+        <HomeData />
+      </Suspense>
     </>
   );
 }

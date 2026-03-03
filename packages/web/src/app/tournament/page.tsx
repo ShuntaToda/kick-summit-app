@@ -1,9 +1,11 @@
 export const dynamic = "force-dynamic";
 
-import { getTournamentData } from "@/server/application/get-tournament-data";
+import { Suspense } from "react";
+import * as container from "@/server/container";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Refresher } from "@/components/refresher";
+import { CardSkeleton } from "@/components/section-skeleton";
 import type { Match } from "@/server/domain/entities/match";
 import type { Team } from "@/server/domain/entities/team";
 import type { TournamentBracket } from "@/server/domain/entities/bracket";
@@ -36,8 +38,8 @@ function BracketMatch({
   match: Match;
   teamMap: Map<string, Team>;
 }) {
-  const teamAName = teamMap.get(match.teamAId)?.name ?? "TBD";
-  const teamBName = teamMap.get(match.teamBId)?.name ?? "TBD";
+  const teamAName = match.teamAId ? teamMap.get(match.teamAId)?.name ?? "TBD" : "TBD";
+  const teamBName = match.teamBId ? teamMap.get(match.teamBId)?.name ?? "TBD" : "TBD";
 
   return (
     <Card>
@@ -70,10 +72,19 @@ function BracketMatch({
             </div>
           ) : (
             <Badge variant="outline">
-              {new Date(match.scheduledTime).toLocaleTimeString("ja-JP", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {match.scheduledTime && !isNaN(new Date(match.scheduledTime).getTime()) ? (
+                <>
+                  {new Date(match.scheduledTime).toLocaleTimeString("ja-JP", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  {" - "}
+                  {new Date(new Date(match.scheduledTime).getTime() + match.durationMinutes * 60 * 1000).toLocaleTimeString("ja-JP", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </>
+              ) : "未定"}
             </Badge>
           )}
         </div>
@@ -82,8 +93,8 @@ function BracketMatch({
   );
 }
 
-export default async function TournamentPage() {
-  const { brackets, matches, teams } = await getTournamentData();
+async function TournamentData() {
+  const { brackets, matches, teams } = await container.getTournamentData();
 
   const teamMap = new Map(teams.map((t) => [t.id, t]));
   const matchMap = new Map(matches.map((m) => [m.id, m]));
@@ -91,22 +102,16 @@ export default async function TournamentPage() {
 
   if (brackets.length === 0) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-xl font-bold">トーナメント表</h1>
-        <p className="py-8 text-center text-muted-foreground">
-          トーナメントデータがありません
-        </p>
-      </div>
+      <p className="py-8 text-center text-muted-foreground">
+        トーナメントデータがありません
+      </p>
     );
   }
 
   const totalRounds = rounds.length;
 
   return (
-    <div className="space-y-6">
-      <Refresher />
-      <h1 className="text-xl font-bold">トーナメント表</h1>
-
+    <div className="space-y-4">
       {rounds.map(({ round, slots }) => (
         <div key={round} className="space-y-2">
           <h2 className="text-sm font-medium text-muted-foreground">
@@ -125,6 +130,18 @@ export default async function TournamentPage() {
           })}
         </div>
       ))}
+    </div>
+  );
+}
+
+export default function TournamentPage() {
+  return (
+    <div className="space-y-6">
+      <Refresher />
+      <h1 className="text-xl font-bold">トーナメント表</h1>
+      <Suspense fallback={<CardSkeleton count={4} />}>
+        <TournamentData />
+      </Suspense>
     </div>
   );
 }

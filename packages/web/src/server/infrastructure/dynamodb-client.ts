@@ -14,9 +14,14 @@ const client = new DynamoDBClient({
 
 export const docClient = DynamoDBDocumentClient.from(client);
 
-export const TABLE_NAME = process.env.TABLE_NAME ?? "futsal-tournament";
 export const TOURNAMENT_ID = "default";
 
-export function pk() {
-  return `TOURNAMENT#${TOURNAMENT_ID}`;
-}
+const prefix = process.env.TABLE_PREFIX ?? "kick-summit";
+
+export const TABLE_NAMES = {
+  tournaments: `${prefix}-tournaments`,
+  groups: `${prefix}-groups`,
+  teams: `${prefix}-teams`,
+  matches: `${prefix}-matches`,
+  brackets: `${prefix}-brackets`,
+} as const;

@@ -8,22 +8,23 @@ export type MatchType = z.infer<typeof matchTypeSchema>;
 
 export const matchSchema = z.object({
   id: z.string().min(1),
+  tournamentId: z.string().min(1),
   type: matchTypeSchema,
-  group: z.string(),
-  teamAId: z.string().min(1),
-  teamBId: z.string().min(1),
+  groupId: z.string().nullable(),
+  teamAId: z.string().nullable(),
+  teamBId: z.string().nullable(),
   scoreA: z.number().int().min(0).nullable(),
   scoreB: z.number().int().min(0).nullable(),
   halfScoreA: z.number().int().min(0).nullable(),
   halfScoreB: z.number().int().min(0).nullable(),
-  scheduledTime: z.string().min(1),
+  scheduledTime: z.string().default(""),
+  durationMinutes: z.number().int().min(1).default(10),
   court: z.string().min(1),
   status: matchStatusSchema,
+  refereeTeamId: z.string().nullable().default(null),
 });
 
 export type Match = z.infer<typeof matchSchema>;
-
-// --- 入力バリデーション用スキーマ ---
 
 export const submitScoreInputSchema = z.object({
   matchId: z.string().min(1),
@@ -39,7 +40,8 @@ export const changeStatusInputSchema = z.object({
 });
 
 export interface MatchRepository {
-  findAll(): Promise<Match[]>;
+  findAll(tournamentId: string): Promise<Match[]>;
+  findByGroupId(groupId: string): Promise<Match[]>;
   findById(id: string): Promise<Match | null>;
   save(match: Match): Promise<void>;
   updateScore(
@@ -48,7 +50,8 @@ export interface MatchRepository {
     scoreB: number,
     halfScoreA: number | null,
     halfScoreB: number | null,
-    status: MatchStatus
+    status: MatchStatus,
   ): Promise<void>;
   updateStatus(matchId: string, status: MatchStatus): Promise<void>;
+  delete(id: string): Promise<void>;
 }

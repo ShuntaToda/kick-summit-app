@@ -54,7 +54,8 @@ export function ScoreInputContent({ teams, matches }: Props) {
     [matches]
   );
 
-  function teamName(id: string) {
+  function teamName(id: string | null) {
+    if (!id) return "TBD";
     return teamMap.get(id)?.name ?? id;
   }
 
