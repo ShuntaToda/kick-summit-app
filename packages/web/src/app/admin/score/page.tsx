@@ -6,21 +6,26 @@ import { ScoreInputContent } from "@/components/score-input-content";
 import { Refresher } from "@/components/refresher";
 import { CardSkeleton } from "@/components/section-skeleton";
 
-async function ScoreData() {
+type PageProps = { searchParams: Promise<{ id?: string }> };
+
+async function ScoreData({ eventId }: { eventId: string }) {
   const [teams, matches] = await Promise.all([
-    container.getTeams(),
-    container.getMatches(),
+    container.getTeams(eventId),
+    container.getMatches(eventId),
   ]);
 
   return <ScoreInputContent teams={teams} matches={matches} />;
 }
 
-export default function ScoreInputPage() {
+export default async function ScoreInputPage({ searchParams }: PageProps) {
+  const { id } = await searchParams;
+  const eventId = id || "default";
+
   return (
     <>
       <Refresher />
       <Suspense fallback={<CardSkeleton count={4} />}>
-        <ScoreData />
+        <ScoreData eventId={eventId} />
       </Suspense>
     </>
   );

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { saveTeam, deleteTeam } from "@/lib/actions";
+import { useState, useEffect, useActionState } from "react";
+import { saveTeamFormAction, deleteTeamAction } from "@/lib/actions/team";
+import type { ActionState } from "@/lib/actions/helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,12 +15,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Trash2, Pencil, Plus, X } from "lucide-react";
+import { SubmitButton } from "@/components/ui/submit-button";
 import type { Team } from "@/server/domain/entities/team";
 import type { Group } from "@/server/domain/entities/group";
+import type { CustomField } from "@/server/domain/entities/event";
 
 type Props = {
   teams: Team[];
   groups: Group[];
+  customFields: CustomField[];
+  eventId: string;
 };
 
 type TeamForm = {
@@ -28,68 +32,40 @@ type TeamForm = {
   groupId: string;
   name: string;
   color: string;
-  partyCount: number;
-  receiptName: string;
+  customValues: Record<string, string | number>;
 };
 
 const emptyForm = (groupId: string): TeamForm => ({
   groupId,
   name: "",
   color: "#3b82f6",
-  partyCount: 0,
-  receiptName: "",
+  customValues: {},
 });
 
-export function TeamManager({ teams, groups }: Props) {
-  const router = useRouter();
+const init: ActionState = { success: false };
+
+export function TeamManager({ teams, groups, customFields, eventId }: Props) {
   const [editingTeam, setEditingTeam] = useState<TeamForm | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTeam, setNewTeam] = useState<TeamForm>(emptyForm(groups[0]?.id ?? ""));
-  const [isPending, startTransition] = useTransition();
+  const [addState, addAction] = useActionState(saveTeamFormAction, init);
+  const [editState, editAction] = useActionState(saveTeamFormAction, init);
+
+  useEffect(() => {
+    if (addState.success) {
+      setNewTeam(emptyForm(groups[0]?.id ?? ""));
+      setShowAddForm(false);
+    }
+  }, [addState.timestamp]);
+
+  useEffect(() => {
+    if (editState.success) setEditingTeam(null);
+  }, [editState.timestamp]);
 
   const teamsByGroup = groups.map((group) => ({
     group,
     teams: teams.filter((t) => t.groupId === group.id),
   }));
-
-  function handleSaveNew() {
-    if (!newTeam.name.trim() || !newTeam.groupId) return;
-    startTransition(async () => {
-      await saveTeam({
-        groupId: newTeam.groupId,
-        name: newTeam.name.trim(),
-        color: newTeam.color,
-        partyCount: newTeam.partyCount,
-        receiptName: newTeam.receiptName.trim(),
-      });
-      setNewTeam(emptyForm(groups[0]?.id ?? ""));
-      setShowAddForm(false);
-      router.refresh();
-    });
-  }
-
-  function handleUpdate() {
-    if (!editingTeam?.id || !editingTeam.name.trim()) return;
-    startTransition(async () => {
-      await saveTeam({
-        id: editingTeam.id,
-        groupId: editingTeam.groupId,
-        name: editingTeam.name.trim(),
-        color: editingTeam.color,
-        partyCount: editingTeam.partyCount,
-        receiptName: editingTeam.receiptName.trim(),
-      });
-      setEditingTeam(null);
-      router.refresh();
-    });
-  }
-
-  function handleDelete(id: string) {
-    startTransition(async () => {
-      await deleteTeam(id);
-      router.refresh();
-    });
-  }
 
   function startEdit(team: Team) {
     setEditingTeam({
@@ -97,8 +73,7 @@ export function TeamManager({ teams, groups }: Props) {
       groupId: team.groupId,
       name: team.name,
       color: team.color,
-      partyCount: team.partyCount,
-      receiptName: team.receiptName,
+      customValues: team.customValues,
     });
   }
 
@@ -117,9 +92,10 @@ export function TeamManager({ teams, groups }: Props) {
                     form={editingTeam}
                     onChange={setEditingTeam}
                     groups={groups}
-                    onSave={handleUpdate}
+                    customFields={customFields}
+                    formAction={editAction}
+                    eventId={eventId}
                     onCancel={() => setEditingTeam(null)}
-                    isPending={isPending}
                   />
                 ) : (
                   <div className="flex items-center gap-3">
@@ -127,12 +103,18 @@ export function TeamManager({ teams, groups }: Props) {
                       className="h-4 w-4 shrink-0 rounded-full"
                       style={{ backgroundColor: team.color }}
                     />
-                    <span className="flex-1 text-sm font-medium">
-                      {team.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      懇親会 {team.partyCount}人
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm font-medium">{team.name}</span>
+                      {customFields.length > 0 && (
+                        <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                          {customFields.map((f) => {
+                            const v = team.customValues[f.id];
+                            if (v === undefined || v === "" || v === 0) return null;
+                            return <span key={f.id}>{f.label}: {v}</span>;
+                          })}
+                        </div>
+                      )}
+                    </div>
                     <Button
                       size="icon"
                       variant="ghost"
@@ -140,14 +122,12 @@ export function TeamManager({ teams, groups }: Props) {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleDelete(team.id)}
-                      disabled={isPending}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <form action={deleteTeamAction}>
+                      <input type="hidden" name="id" value={team.id} />
+                      <SubmitButton size="icon" variant="ghost">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </SubmitButton>
+                    </form>
                   </div>
                 )}
               </CardContent>
@@ -163,9 +143,10 @@ export function TeamManager({ teams, groups }: Props) {
               form={newTeam}
               onChange={(f) => setNewTeam(f)}
               groups={groups}
-              onSave={handleSaveNew}
+              customFields={customFields}
+              formAction={addAction}
+              eventId={eventId}
               onCancel={() => setShowAddForm(false)}
-              isPending={isPending}
               isNew
             />
           </CardContent>
@@ -188,84 +169,105 @@ function TeamFormFields({
   form,
   onChange,
   groups,
-  onSave,
+  customFields,
+  formAction,
+  eventId,
   onCancel,
-  isPending,
   isNew,
 }: {
   form: TeamForm;
   onChange: (form: TeamForm) => void;
   groups: Group[];
-  onSave: () => void;
+  customFields: CustomField[];
+  formAction: (payload: FormData) => void;
+  eventId: string;
   onCancel: () => void;
-  isPending: boolean;
   isNew?: boolean;
 }) {
+  const payload = JSON.stringify({
+    id: form.id,
+    groupId: form.groupId,
+    name: form.name.trim(),
+    color: form.color,
+    customValues: form.customValues,
+  });
+
+  function setCustomValue(fieldId: string, value: string | number) {
+    onChange({ ...form, customValues: { ...form.customValues, [fieldId]: value } });
+  }
+
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label className="text-xs">チーム名</Label>
-          <Input
-            value={form.name}
-            onChange={(e) => onChange({ ...form, name: e.target.value })}
-            autoFocus
-          />
+    <form action={formAction}>
+      <input type="hidden" name="eventId" value={eventId} />
+      <input type="hidden" name="payload" value={payload} />
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">チーム名</Label>
+            <Input
+              value={form.name}
+              onChange={(e) => onChange({ ...form, name: e.target.value })}
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">グループ</Label>
+            <Select
+              value={form.groupId}
+              onValueChange={(v) => onChange({ ...form, groupId: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">グループ</Label>
-          <Select
-            value={form.groupId}
-            onValueChange={(v) => onChange({ ...form, groupId: v })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {groups.map((g) => (
-                <SelectItem key={g.id} value={g.id}>
-                  {g.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">カラー</Label>
+            <Input
+              type="color"
+              value={form.color}
+              onChange={(e) => onChange({ ...form, color: e.target.value })}
+            />
+          </div>
+          {customFields.map((field) => (
+            <div key={field.id} className="space-y-1">
+              <Label className="text-xs">
+                {field.label}
+                {field.required && <span className="ml-0.5 text-destructive">*</span>}
+              </Label>
+              <Input
+                type={field.type === "number" ? "number" : "text"}
+                min={field.type === "number" ? 0 : undefined}
+                value={form.customValues[field.id] ?? (field.type === "number" ? 0 : "")}
+                onChange={(e) =>
+                  setCustomValue(
+                    field.id,
+                    field.type === "number" ? Number(e.target.value) : e.target.value,
+                  )
+                }
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <SubmitButton size="sm" disabled={!form.name.trim()}>
+            {isNew ? "追加" : "保存"}
+          </SubmitButton>
+          <Button size="sm" variant="ghost" type="button" onClick={onCancel}>
+            <X className="mr-1 h-4 w-4" />
+            キャンセル
+          </Button>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-1">
-          <Label className="text-xs">カラー</Label>
-          <Input
-            type="color"
-            value={form.color}
-            onChange={(e) => onChange({ ...form, color: e.target.value })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">懇親会人数</Label>
-          <Input
-            type="number"
-            min={0}
-            value={form.partyCount}
-            onChange={(e) => onChange({ ...form, partyCount: Number(e.target.value) })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">領収書名</Label>
-          <Input
-            value={form.receiptName}
-            onChange={(e) => onChange({ ...form, receiptName: e.target.value })}
-          />
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" onClick={onSave} disabled={isPending || !form.name.trim()}>
-          {isNew ? "追加" : "保存"}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={onCancel}>
-          <X className="mr-1 h-4 w-4" />
-          キャンセル
-        </Button>
-      </div>
-    </div>
+    </form>
   );
 }

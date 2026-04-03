@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "@/hooks/use-admin";
-import { submitScore } from "@/lib/actions";
+import { submitScore } from "@/lib/actions/match";
 import {
   Card,
   CardContent,

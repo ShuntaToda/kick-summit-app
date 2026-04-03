@@ -7,11 +7,13 @@ import { TimetableTabs } from "@/components/timetable-tabs";
 import { TimetableMatchList } from "@/components/timetable-match-list";
 import { CardSkeleton } from "@/components/section-skeleton";
 
-async function TimetableData() {
+type PageProps = { searchParams: Promise<{ id?: string }> };
+
+async function TimetableData({ eventId }: { eventId: string }) {
   const [teams, matches, groups] = await Promise.all([
-    container.getTeams(),
-    container.getMatches(),
-    container.getGroups(),
+    container.getTeams(eventId),
+    container.getMatches(eventId),
+    container.getGroups(eventId),
   ]);
 
   const teamMap: Record<string, { name: string; color: string; groupId: string }> = {};
@@ -52,13 +54,16 @@ async function TimetableData() {
   );
 }
 
-export default function TimetablePage() {
+export default async function TimetablePage({ searchParams }: PageProps) {
+  const { id } = await searchParams;
+  const eventId = id || "default";
+
   return (
     <div className="space-y-4">
       <Refresher />
       <h1 className="text-xl font-bold">タイムテーブル</h1>
       <Suspense fallback={<CardSkeleton count={6} />}>
-        <TimetableData />
+        <TimetableData eventId={eventId} />
       </Suspense>
     </div>
   );

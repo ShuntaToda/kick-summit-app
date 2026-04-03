@@ -14,14 +14,15 @@ const docClient = DynamoDBDocumentClient.from(client);
 
 const PREFIX = "kick-summit";
 const TABLES = {
-  tournaments: `${PREFIX}-tournaments`,
+  events: `${PREFIX}-events`,
   groups: `${PREFIX}-groups`,
   teams: `${PREFIX}-teams`,
   matches: `${PREFIX}-matches`,
   brackets: `${PREFIX}-brackets`,
+  courts: `${PREFIX}-courts`,
 };
 
-const TOURNAMENT_ID = "default";
+const EVENT_ID = "default";
 
 console.log(`ターゲット: ${isLocal ? "ローカル (localhost:8000)" : "AWS リモート"}\n`);
 
@@ -75,15 +76,16 @@ async function put(table: string, item: Record<string, unknown>) {
 
 async function seed() {
   console.log("\n=== テーブル再作成 ===");
-  await recreateTable(TABLES.tournaments, { hash: "id" });
-  await recreateTable(TABLES.groups, { hash: "id" }, [{ name: "tournamentId-index", hash: "tournamentId" }]);
-  await recreateTable(TABLES.teams, { hash: "id" }, [{ name: "tournamentId-index", hash: "tournamentId" }, { name: "groupId-index", hash: "groupId" }]);
-  await recreateTable(TABLES.matches, { hash: "id" }, [{ name: "schedule-index", hash: "tournamentId", range: "scheduledTime" }, { name: "group-index", hash: "groupId" }]);
-  await recreateTable(TABLES.brackets, { hash: "id" }, [{ name: "tournamentId-index", hash: "tournamentId" }]);
+  await recreateTable(TABLES.events, { hash: "id" });
+  await recreateTable(TABLES.groups, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
+  await recreateTable(TABLES.teams, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }, { name: "groupId-index", hash: "groupId" }]);
+  await recreateTable(TABLES.matches, { hash: "id" }, [{ name: "schedule-index", hash: "eventId", range: "scheduledTime" }, { name: "group-index", hash: "groupId" }]);
+  await recreateTable(TABLES.brackets, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
+  await recreateTable(TABLES.courts, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
 
   console.log("\n=== 大会情報 ===");
-  await put(TABLES.tournaments, {
-    id: TOURNAMENT_ID,
+  await put(TABLES.events, {
+    id: EVENT_ID,
     name: "Kick Summit 2026",
     date: "2026-03-15",
     passwordHash: "admin",
@@ -92,9 +94,13 @@ async function seed() {
     partyFeePerPerson: 0,
   });
 
+  console.log("=== コート ===");
+  await put(TABLES.courts, { id: "c1", eventId: EVENT_ID, name: "コート1" });
+  await put(TABLES.courts, { id: "c2", eventId: EVENT_ID, name: "コート2" });
+
   console.log("=== グループ ===");
-  await put(TABLES.groups, { id: "gA", tournamentId: TOURNAMENT_ID, name: "グループA" });
-  await put(TABLES.groups, { id: "gB", tournamentId: TOURNAMENT_ID, name: "グループB" });
+  await put(TABLES.groups, { id: "gA", eventId: EVENT_ID, name: "グループA" });
+  await put(TABLES.groups, { id: "gB", eventId: EVENT_ID, name: "グループB" });
 
   console.log("=== チーム ===");
   const teams = [
@@ -110,7 +116,7 @@ async function seed() {
   for (const t of teams) {
     await put(TABLES.teams, {
       ...t,
-      tournamentId: TOURNAMENT_ID,
+      eventId: EVENT_ID,
       partyCount: 0,
       receiptName: "",
     });

@@ -6,25 +6,30 @@ import { HomeContent } from "@/components/home-content";
 import { Refresher } from "@/components/refresher";
 import { CardSkeleton } from "@/components/section-skeleton";
 
-async function HomeData() {
+type PageProps = { searchParams: Promise<{ id?: string }> };
+
+async function HomeData({ eventId }: { eventId: string }) {
   const [teams, matches, standings, groups] = await Promise.all([
-    container.getTeams(),
-    container.getMatches(),
-    container.getStandings(),
-    container.getGroups(),
+    container.getTeams(eventId),
+    container.getMatches(eventId),
+    container.getStandings(eventId),
+    container.getGroups(eventId),
   ]);
 
   return (
-    <HomeContent teams={teams} matches={matches} standings={standings} groups={groups} />
+    <HomeContent teams={teams} matches={matches} standings={standings} groups={groups} eventId={eventId} />
   );
 }
 
-export default function HomePage() {
+export default async function HomePage({ searchParams }: PageProps) {
+  const { id } = await searchParams;
+  const eventId = id || "default";
+
   return (
     <>
       <Refresher />
       <Suspense fallback={<CardSkeleton count={4} />}>
-        <HomeData />
+        <HomeData eventId={eventId} />
       </Suspense>
     </>
   );

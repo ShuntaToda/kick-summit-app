@@ -1,8 +1,8 @@
 export type {
-  Tournament,
+  Event,
   Team,
   Match,
-  TournamentBracket,
+  Bracket,
   StandingsRow,
   MatchStatus,
   MatchType,

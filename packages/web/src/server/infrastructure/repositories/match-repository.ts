@@ -15,13 +15,13 @@ import {
 } from "../../domain/entities/match";
 
 export class DynamoMatchRepository implements MatchRepository {
-  async findAll(tournamentId: string): Promise<Match[]> {
+  async findAll(eventId: string): Promise<Match[]> {
     const result = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAMES.matches,
         IndexName: "schedule-index",
-        KeyConditionExpression: "tournamentId = :tid",
-        ExpressionAttributeValues: { ":tid": tournamentId },
+        KeyConditionExpression: "eventId = :tid",
+        ExpressionAttributeValues: { ":tid": eventId },
       }),
     );
     return (result.Items ?? []).map((item) => matchSchema.parse(item));
@@ -52,10 +52,14 @@ export class DynamoMatchRepository implements MatchRepository {
 
   async save(match: Match): Promise<void> {
     const validated = matchSchema.parse(match);
+    // DynamoDB GSI キーに null は使えないため除去
+    const item = Object.fromEntries(
+      Object.entries(validated).filter(([, v]) => v !== null),
+    );
     await docClient.send(
       new PutCommand({
         TableName: TABLE_NAMES.matches,
-        Item: validated,
+        Item: item,
       }),
     );
   }

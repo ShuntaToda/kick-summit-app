@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Home, Calendar, TableProperties, Trophy, EllipsisVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,12 @@ function isActive(href: string, pathname: string) {
 
 export function Navigation() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
+
+  function buildHref(base: string) {
+    return id ? `${base}?id=${encodeURIComponent(id)}` : base;
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background">
@@ -30,7 +36,7 @@ export function Navigation() {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={buildHref(item.href)}
               className={cn(
                 "relative flex flex-1 flex-col items-center gap-0.5 py-2 text-xs transition-colors",
                 active

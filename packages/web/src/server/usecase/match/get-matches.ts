@@ -1,8 +1,8 @@
 import type { Match, MatchRepository } from "../../domain/entities/match";
 
 export const createGetMatches =
-  (matchRepo: MatchRepository, tournamentId: string) => (): Promise<Match[]> =>
-    matchRepo.findAll(tournamentId);
+  (matchRepo: MatchRepository, eventId: string) => (): Promise<Match[]> =>
+    matchRepo.findAll(eventId);
 
 export const createGetMatch =
   (matchRepo: MatchRepository) =>

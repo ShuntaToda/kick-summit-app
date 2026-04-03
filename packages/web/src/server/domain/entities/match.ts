@@ -8,20 +8,20 @@ export type MatchType = z.infer<typeof matchTypeSchema>;
 
 export const matchSchema = z.object({
   id: z.string().min(1),
-  tournamentId: z.string().min(1),
+  eventId: z.string().min(1),
   type: matchTypeSchema,
-  groupId: z.string().nullable(),
-  teamAId: z.string().nullable(),
-  teamBId: z.string().nullable(),
-  scoreA: z.number().int().min(0).nullable(),
-  scoreB: z.number().int().min(0).nullable(),
-  halfScoreA: z.number().int().min(0).nullable(),
-  halfScoreB: z.number().int().min(0).nullable(),
+  groupId: z.string().nullish().transform((v) => v ?? null),
+  teamAId: z.string().nullish().transform((v) => v ?? null),
+  teamBId: z.string().nullish().transform((v) => v ?? null),
+  scoreA: z.number().int().min(0).nullish().transform((v) => v ?? null),
+  scoreB: z.number().int().min(0).nullish().transform((v) => v ?? null),
+  halfScoreA: z.number().int().min(0).nullish().transform((v) => v ?? null),
+  halfScoreB: z.number().int().min(0).nullish().transform((v) => v ?? null),
   scheduledTime: z.string().default(""),
   durationMinutes: z.number().int().min(1).default(10),
   court: z.string().min(1),
   status: matchStatusSchema,
-  refereeTeamId: z.string().nullable().default(null),
+  refereeTeamId: z.string().nullish().transform((v) => v ?? null),
 });
 
 export type Match = z.infer<typeof matchSchema>;
@@ -40,7 +40,7 @@ export const changeStatusInputSchema = z.object({
 });
 
 export interface MatchRepository {
-  findAll(tournamentId: string): Promise<Match[]>;
+  findAll(eventId: string): Promise<Match[]>;
   findByGroupId(groupId: string): Promise<Match[]>;
   findById(id: string): Promise<Match | null>;
   save(match: Match): Promise<void>;

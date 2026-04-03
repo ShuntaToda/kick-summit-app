@@ -7,13 +7,13 @@ import {
 } from "../../domain/entities/team";
 
 export class DynamoTeamRepository implements TeamRepository {
-  async findAll(tournamentId: string): Promise<Team[]> {
+  async findAll(eventId: string): Promise<Team[]> {
     const result = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAMES.teams,
-        IndexName: "tournamentId-index",
-        KeyConditionExpression: "tournamentId = :tid",
-        ExpressionAttributeValues: { ":tid": tournamentId },
+        IndexName: "eventId-index",
+        KeyConditionExpression: "eventId = :tid",
+        ExpressionAttributeValues: { ":tid": eventId },
       }),
     );
     return (result.Items ?? []).map((item) => teamSchema.parse(item));

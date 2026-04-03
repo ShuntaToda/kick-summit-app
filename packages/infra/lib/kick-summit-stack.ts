@@ -16,9 +16,9 @@ export class KickSummitStack extends cdk.Stack {
     // DynamoDB Tables
     // ==========================================
 
-    // --- Tournaments ---
-    const tournamentsTable = new dynamodb.Table(this, "TournamentsTable", {
-      tableName: `${prefix}-tournaments`,
+    // --- Events ---
+    const eventsTable = new dynamodb.Table(this, "EventsTable", {
+      tableName: `${prefix}-events`,
       partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -33,8 +33,21 @@ export class KickSummitStack extends cdk.Stack {
     });
 
     groupsTable.addGlobalSecondaryIndex({
-      indexName: "tournamentId-index",
-      partitionKey: { name: "tournamentId", type: dynamodb.AttributeType.STRING },
+      indexName: "eventId-index",
+      partitionKey: { name: "eventId", type: dynamodb.AttributeType.STRING },
+    });
+
+    // --- Courts ---
+    const courtsTable = new dynamodb.Table(this, "CourtsTable", {
+      tableName: `${prefix}-courts`,
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    courtsTable.addGlobalSecondaryIndex({
+      indexName: "eventId-index",
+      partitionKey: { name: "eventId", type: dynamodb.AttributeType.STRING },
     });
 
     // --- Teams ---
@@ -46,8 +59,8 @@ export class KickSummitStack extends cdk.Stack {
     });
 
     teamsTable.addGlobalSecondaryIndex({
-      indexName: "tournamentId-index",
-      partitionKey: { name: "tournamentId", type: dynamodb.AttributeType.STRING },
+      indexName: "eventId-index",
+      partitionKey: { name: "eventId", type: dynamodb.AttributeType.STRING },
     });
 
     teamsTable.addGlobalSecondaryIndex({
@@ -65,7 +78,7 @@ export class KickSummitStack extends cdk.Stack {
 
     matchesTable.addGlobalSecondaryIndex({
       indexName: "schedule-index",
-      partitionKey: { name: "tournamentId", type: dynamodb.AttributeType.STRING },
+      partitionKey: { name: "eventId", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "scheduledTime", type: dynamodb.AttributeType.STRING },
     });
 
@@ -83,11 +96,11 @@ export class KickSummitStack extends cdk.Stack {
     });
 
     bracketsTable.addGlobalSecondaryIndex({
-      indexName: "tournamentId-index",
-      partitionKey: { name: "tournamentId", type: dynamodb.AttributeType.STRING },
+      indexName: "eventId-index",
+      partitionKey: { name: "eventId", type: dynamodb.AttributeType.STRING },
     });
 
-    const allTables = [tournamentsTable, groupsTable, teamsTable, matchesTable, bracketsTable];
+    const allTables = [eventsTable, groupsTable, courtsTable, teamsTable, matchesTable, bracketsTable];
 
     // ==========================================
     // Lambda (Next.js + Lambda Web Adapter)

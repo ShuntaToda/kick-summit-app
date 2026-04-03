@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { saveMatch, deleteMatch } from "@/lib/actions";
+import { useState, useEffect, useActionState } from "react";
+import { saveMatchFormAction, deleteMatchAction } from "@/lib/actions/match";
+import type { ActionState } from "@/lib/actions/helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Trash2, Pencil, Plus, X } from "lucide-react";
-import type { Match, MatchType, MatchStatus } from "@/server/domain/entities/match";
+import { SubmitButton } from "@/components/ui/submit-button";
+import type { Match, MatchType } from "@/server/domain/entities/match";
 import type { Team } from "@/server/domain/entities/team";
 import type { Group } from "@/server/domain/entities/group";
 
@@ -23,6 +24,7 @@ type Props = {
   matches: Match[];
   teams: Team[];
   groups: Group[];
+  eventId: string;
 };
 
 type MatchForm = {
@@ -34,7 +36,6 @@ type MatchForm = {
   scheduledTime: string;
   durationMinutes: number;
   court: string;
-  status: MatchStatus;
   refereeTeamId: string;
 };
 
@@ -48,11 +49,11 @@ function fromFormTime(local: string) {
   return local ? `${local}:00` : "";
 }
 
-export function MatchManager({ matches, teams, groups }: Props) {
-  const router = useRouter();
+const init: ActionState = { success: false };
+
+export function MatchManager({ matches, teams, groups, eventId }: Props) {
   const [editingMatch, setEditingMatch] = useState<MatchForm | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [isPending, startTransition] = useTransition();
 
   const emptyForm: MatchForm = {
     type: "league",
@@ -62,16 +63,38 @@ export function MatchManager({ matches, teams, groups }: Props) {
     scheduledTime: "",
     durationMinutes: 10,
     court: "",
-    status: "scheduled",
     refereeTeamId: "",
   };
 
   const [newMatch, setNewMatch] = useState<MatchForm>(emptyForm);
+  const [addState, addAction] = useActionState(saveMatchFormAction, init);
+  const [editState, editAction] = useActionState(saveMatchFormAction, init);
+
+  useEffect(() => {
+    if (addState.success) {
+      setNewMatch(emptyForm);
+      setShowAddForm(false);
+    }
+  }, [addState.timestamp]);
+
+  useEffect(() => {
+    if (editState.success) setEditingMatch(null);
+  }, [editState.timestamp]);
 
   const teamMap = new Map(teams.map((t) => [t.id, t]));
-  const teamName = (id: string | null) => {
-    if (!id) return "TBD";
-    return teamMap.get(id)?.name ?? id;
+  const teamLabel = (id: string | null) => {
+    if (!id) return <span>TBD</span>;
+    const team = teamMap.get(id);
+    if (!team) return <span>{id}</span>;
+    return (
+      <span className="inline-flex items-center gap-1">
+        <span
+          className="inline-block h-3 w-3 shrink-0 rounded-full"
+          style={{ backgroundColor: team.color }}
+        />
+        {team.name}
+      </span>
+    );
   };
 
   const sorted = [...matches].sort((a, b) =>
@@ -89,53 +112,6 @@ export function MatchManager({ matches, teams, groups }: Props) {
     (m) => m.type === "league" && !groups.some((g) => g.id === m.groupId),
   );
 
-  function handleSaveNew() {
-    if (!newMatch.scheduledTime || !newMatch.court) return;
-    startTransition(async () => {
-      await saveMatch({
-        type: newMatch.type,
-        groupId: newMatch.groupId || null,
-        teamAId: newMatch.teamAId || null,
-        teamBId: newMatch.teamBId || null,
-        scheduledTime: fromFormTime(newMatch.scheduledTime),
-        durationMinutes: newMatch.durationMinutes,
-        court: newMatch.court,
-        status: newMatch.status,
-        refereeTeamId: newMatch.refereeTeamId || null,
-      });
-      setNewMatch(emptyForm);
-      setShowAddForm(false);
-      router.refresh();
-    });
-  }
-
-  function handleUpdate() {
-    if (!editingMatch?.id || !editingMatch.scheduledTime || !editingMatch.court) return;
-    startTransition(async () => {
-      await saveMatch({
-        id: editingMatch.id,
-        type: editingMatch.type,
-        groupId: editingMatch.groupId || null,
-        teamAId: editingMatch.teamAId || null,
-        teamBId: editingMatch.teamBId || null,
-        scheduledTime: fromFormTime(editingMatch.scheduledTime),
-        durationMinutes: editingMatch.durationMinutes,
-        court: editingMatch.court,
-        status: editingMatch.status,
-        refereeTeamId: editingMatch.refereeTeamId || null,
-      });
-      setEditingMatch(null);
-      router.refresh();
-    });
-  }
-
-  function handleDelete(id: string) {
-    startTransition(async () => {
-      await deleteMatch(id);
-      router.refresh();
-    });
-  }
-
   function startEdit(match: Match) {
     setEditingMatch({
       id: match.id,
@@ -146,8 +122,21 @@ export function MatchManager({ matches, teams, groups }: Props) {
       scheduledTime: toFormTime(match.scheduledTime),
       durationMinutes: match.durationMinutes,
       court: match.court,
-      status: match.status,
       refereeTeamId: match.refereeTeamId ?? "",
+    });
+  }
+
+  function buildPayload(form: MatchForm) {
+    return JSON.stringify({
+      id: form.id,
+      type: form.type,
+      groupId: form.groupId || null,
+      teamAId: form.teamAId || null,
+      teamBId: form.teamBId || null,
+      scheduledTime: fromFormTime(form.scheduledTime),
+      durationMinutes: form.durationMinutes,
+      court: form.court,
+      refereeTeamId: form.refereeTeamId || null,
     });
   }
 
@@ -165,9 +154,10 @@ export function MatchManager({ matches, teams, groups }: Props) {
                   onChange={setEditingMatch}
                   teams={teams}
                   groups={groups}
-                  onSave={handleUpdate}
+                  formAction={editAction}
+                  eventId={eventId}
+                  buildPayload={buildPayload}
                   onCancel={() => setEditingMatch(null)}
-                  isPending={isPending}
                 />
               ) : (
                 <div className="flex items-center gap-3">
@@ -190,12 +180,12 @@ export function MatchManager({ matches, teams, groups }: Props) {
                     <div className="mt-0.5">{match.court}</div>
                   </div>
                   <div className="min-w-0 flex-1 text-center text-sm">
-                    <div className="font-medium">{teamName(match.teamAId)}</div>
+                    <div className="font-medium">{teamLabel(match.teamAId)}</div>
                     <div className="text-xs text-muted-foreground">vs</div>
-                    <div className="font-medium">{teamName(match.teamBId)}</div>
+                    <div className="font-medium">{teamLabel(match.teamBId)}</div>
                     {match.refereeTeamId && (
                       <div className="mt-0.5 text-xs text-muted-foreground">
-                        審判: {teamName(match.refereeTeamId)}
+                        審判: {teamMap.get(match.refereeTeamId)?.name ?? match.refereeTeamId}
                       </div>
                     )}
                   </div>
@@ -207,14 +197,12 @@ export function MatchManager({ matches, teams, groups }: Props) {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleDelete(match.id)}
-                      disabled={isPending}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <form action={deleteMatchAction}>
+                      <input type="hidden" name="id" value={match.id} />
+                      <SubmitButton size="icon" variant="ghost">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </SubmitButton>
+                    </form>
                   </div>
                 </div>
               )}
@@ -243,9 +231,10 @@ export function MatchManager({ matches, teams, groups }: Props) {
               onChange={(f) => setNewMatch(f)}
               teams={teams}
               groups={groups}
-              onSave={handleSaveNew}
+              formAction={addAction}
+              eventId={eventId}
+              buildPayload={buildPayload}
               onCancel={() => setShowAddForm(false)}
-              isPending={isPending}
               isNew
             />
           </CardContent>
@@ -269,18 +258,20 @@ function MatchFormFields({
   onChange,
   teams,
   groups,
-  onSave,
+  formAction,
+  eventId,
+  buildPayload,
   onCancel,
-  isPending,
   isNew,
 }: {
   form: MatchForm;
   onChange: (form: MatchForm) => void;
   teams: Team[];
   groups: Group[];
-  onSave: () => void;
+  formAction: (payload: FormData) => void;
+  eventId: string;
+  buildPayload: (form: MatchForm) => string;
   onCancel: () => void;
-  isPending: boolean;
   isNew?: boolean;
 }) {
   const filteredTeams = form.groupId
@@ -288,159 +279,146 @@ function MatchFormFields({
     : teams;
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label className="text-xs">種別</Label>
-          <Select
-            value={form.type}
-            onValueChange={(v) => onChange({ ...form, type: v as MatchType })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="league">予選リーグ</SelectItem>
-              <SelectItem value="tournament">決勝トーナメント</SelectItem>
-            </SelectContent>
-          </Select>
+    <form action={formAction}>
+      <input type="hidden" name="eventId" value={eventId} />
+      <input type="hidden" name="payload" value={buildPayload(form)} />
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">種別</Label>
+            <Select
+              value={form.type}
+              onValueChange={(v) => onChange({ ...form, type: v as MatchType })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="league">予選リーグ</SelectItem>
+                <SelectItem value="tournament">決勝トーナメント</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">グループ</Label>
+            <Select
+              value={form.groupId || NONE}
+              onValueChange={(v) => onChange({ ...form, groupId: v === NONE ? "" : v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>なし</SelectItem>
+                {groups.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">グループ</Label>
-          <Select
-            value={form.groupId || NONE}
-            onValueChange={(v) => onChange({ ...form, groupId: v === NONE ? "" : v })}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">チームA</Label>
+            <Select
+              value={form.teamAId || NONE}
+              onValueChange={(v) => onChange({ ...form, teamAId: v === NONE ? "" : v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>TBD</SelectItem>
+                {filteredTeams.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">チームB</Label>
+            <Select
+              value={form.teamBId || NONE}
+              onValueChange={(v) => onChange({ ...form, teamBId: v === NONE ? "" : v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>TBD</SelectItem>
+                {filteredTeams.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">開始時間</Label>
+            <Input
+              type="datetime-local"
+              value={form.scheduledTime}
+              onChange={(e) => onChange({ ...form, scheduledTime: e.target.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">試合時間 (分)</Label>
+            <Input
+              type="number"
+              min={1}
+              value={form.durationMinutes}
+              onChange={(e) => onChange({ ...form, durationMinutes: Number(e.target.value) })}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">コート</Label>
+            <Input
+              value={form.court}
+              onChange={(e) => onChange({ ...form, court: e.target.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">審判</Label>
+            <Select
+              value={form.refereeTeamId || NONE}
+              onValueChange={(v) => onChange({ ...form, refereeTeamId: v === NONE ? "" : v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>なし</SelectItem>
+                {teams.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <SubmitButton
+            size="sm"
+            disabled={!form.scheduledTime || !form.court}
           >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>なし</SelectItem>
-              {groups.map((g) => (
-                <SelectItem key={g.id} value={g.id}>
-                  {g.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {isNew ? "追加" : "保存"}
+          </SubmitButton>
+          <Button size="sm" variant="ghost" type="button" onClick={onCancel}>
+            <X className="mr-1 h-4 w-4" />
+            キャンセル
+          </Button>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label className="text-xs">チームA</Label>
-          <Select
-            value={form.teamAId || NONE}
-            onValueChange={(v) => onChange({ ...form, teamAId: v === NONE ? "" : v })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>TBD</SelectItem>
-              {filteredTeams.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">チームB</Label>
-          <Select
-            value={form.teamBId || NONE}
-            onValueChange={(v) => onChange({ ...form, teamBId: v === NONE ? "" : v })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>TBD</SelectItem>
-              {filteredTeams.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label className="text-xs">開始時間</Label>
-          <Input
-            type="datetime-local"
-            value={form.scheduledTime}
-            onChange={(e) => onChange({ ...form, scheduledTime: e.target.value })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">試合時間 (分)</Label>
-          <Input
-            type="number"
-            min={1}
-            value={form.durationMinutes}
-            onChange={(e) => onChange({ ...form, durationMinutes: Number(e.target.value) })}
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-1">
-          <Label className="text-xs">コート</Label>
-          <Input
-            value={form.court}
-            onChange={(e) => onChange({ ...form, court: e.target.value })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">ステータス</Label>
-          <Select
-            value={form.status}
-            onValueChange={(v) => onChange({ ...form, status: v as MatchStatus })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="scheduled">予定</SelectItem>
-              <SelectItem value="ongoing">進行中</SelectItem>
-              <SelectItem value="finished">終了</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">審判</Label>
-          <Select
-            value={form.refereeTeamId || NONE}
-            onValueChange={(v) => onChange({ ...form, refereeTeamId: v === NONE ? "" : v })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>なし</SelectItem>
-              {teams.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          onClick={onSave}
-          disabled={isPending || !form.scheduledTime || !form.court}
-        >
-          {isNew ? "追加" : "保存"}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={onCancel}>
-          <X className="mr-1 h-4 w-4" />
-          キャンセル
-        </Button>
-      </div>
-    </div>
+    </form>
   );
 }

@@ -1,8 +1,9 @@
+import { nanoid } from "nanoid";
 import type { MatchRepository, MatchType, MatchStatus } from "../../domain/entities/match";
 
 type SaveMatchInput = {
   id?: string;
-  tournamentId: string;
+  eventId: string;
   type: MatchType;
   groupId: string | null;
   teamAId: string | null;
@@ -17,11 +18,11 @@ type SaveMatchInput = {
 export const createSaveMatch =
   (matchRepo: MatchRepository) =>
   async (input: SaveMatchInput): Promise<void> => {
-    const id = input.id ?? crypto.randomUUID();
+    const id = input.id ?? nanoid();
     const existing = input.id ? await matchRepo.findById(input.id) : null;
     await matchRepo.save({
       id,
-      tournamentId: input.tournamentId,
+      eventId: input.eventId,
       type: input.type,
       groupId: input.groupId,
       teamAId: input.teamAId,

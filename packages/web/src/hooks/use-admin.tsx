@@ -6,11 +6,11 @@ import {
   useContext,
   useState,
 } from "react";
-import { verifyPassword } from "@/lib/actions";
+import { verifyPassword } from "@/lib/actions/auth";
 
 interface AdminContextValue {
   isAdmin: boolean;
-  login: (password: string) => Promise<boolean>;
+  login: (eventId: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -23,8 +23,8 @@ const AdminContext = createContext<AdminContextValue>({
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const login = useCallback(async (password: string) => {
-    const ok = await verifyPassword(password);
+  const login = useCallback(async (eventId: string, password: string) => {
+    const ok = await verifyPassword(eventId, password);
     if (ok) setIsAdmin(true);
     return ok;
   }, []);

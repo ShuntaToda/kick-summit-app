@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTeam } from "@/hooks/use-team";
-import { fetchTeams } from "@/lib/actions";
+import { fetchTeams } from "@/lib/actions/team";
 import {
   Dialog,
   DialogContent,
@@ -16,15 +17,17 @@ export function TeamSelectModal() {
   const { selectedTeamId, selectTeam } = useTeam();
   const [teams, setTeams] = useState<Team[]>([]);
   const [open, setOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const eventId = searchParams.get("id") ?? "default";
 
   useEffect(() => {
     if (selectedTeamId === null) {
-      fetchTeams().then((t) => {
+      fetchTeams(eventId).then((t) => {
         setTeams(t);
         if (t.length > 0) setOpen(true);
       });
     }
-  }, [selectedTeamId]);
+  }, [selectedTeamId, eventId]);
 
   function handleSelect(teamId: string) {
     selectTeam(teamId);

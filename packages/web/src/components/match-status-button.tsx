@@ -1,10 +1,8 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useAdmin } from "@/hooks/use-admin";
-import { changeMatchStatus } from "@/lib/actions";
-import { Button } from "@/components/ui/button";
+import { changeMatchStatusAction } from "@/lib/actions/match";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 interface Props {
   matchId: string;
@@ -13,43 +11,40 @@ interface Props {
 
 export function MatchStatusButton({ matchId, status }: Props) {
   const { isAdmin } = useAdmin();
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
 
   if (!isAdmin) return null;
 
-  async function handleClick(newStatus: "ongoing" | "finished") {
-    startTransition(async () => {
-      await changeMatchStatus(matchId, newStatus);
-      router.refresh();
-    });
-  }
-
   if (status === "scheduled") {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-6 text-xs"
-        disabled={isPending}
-        onClick={() => handleClick("ongoing")}
-      >
-        開始
-      </Button>
+      <form action={changeMatchStatusAction}>
+        <input type="hidden" name="matchId" value={matchId} />
+        <input type="hidden" name="status" value="ongoing" />
+        <SubmitButton
+          variant="outline"
+          size="sm"
+          className="h-6 text-xs"
+          pendingText="..."
+        >
+          開始
+        </SubmitButton>
+      </form>
     );
   }
 
   if (status === "ongoing") {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-6 text-xs"
-        disabled={isPending}
-        onClick={() => handleClick("finished")}
-      >
-        終了
-      </Button>
+      <form action={changeMatchStatusAction}>
+        <input type="hidden" name="matchId" value={matchId} />
+        <input type="hidden" name="status" value="finished" />
+        <SubmitButton
+          variant="outline"
+          size="sm"
+          className="h-6 text-xs"
+          pendingText="..."
+        >
+          終了
+        </SubmitButton>
+      </form>
     );
   }
 

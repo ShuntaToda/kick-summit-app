@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import Link from "next/link";
+import { Palette, ChevronRight } from "lucide-react";
 import { useTeam } from "@/hooks/use-team";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -25,6 +27,7 @@ interface Props {
   matches: Match[];
   standings: Record<string, StandingsRow[]>;
   groups: Group[];
+  eventId: string;
 }
 
 function getMatchState(match: Match, now: number) {
@@ -37,9 +40,16 @@ function getMatchState(match: Match, now: number) {
   return "finished";
 }
 
-export function HomeContent({ teams, matches, standings, groups }: Props) {
-  const { selectedTeamId } = useTeam();
+export function HomeContent({ teams, matches, standings, groups, eventId }: Props) {
+  const { selectedTeamId, selectTeam, clearTeam } = useTeam();
   const [now, setNow] = useState(Date.now());
+
+  // localStorage に古いIDが残っている場合はクリアしてチーム選択に戻す
+  useEffect(() => {
+    if (selectedTeamId && !teams.some((t) => t.id === selectedTeamId)) {
+      clearTeam();
+    }
+  }, [selectedTeamId, teams, clearTeam]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30_000);
@@ -67,7 +77,7 @@ export function HomeContent({ teams, matches, standings, groups }: Props) {
           (m.teamAId === selectedTeamId || m.teamBId === selectedTeamId || m.refereeTeamId === selectedTeamId)
       )
       .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime))
-;
+      ;
   }, [matches, selectedTeamId]);
 
   const groupStandings = myTeam?.groupId
@@ -113,6 +123,10 @@ export function HomeContent({ teams, matches, standings, groups }: Props) {
     return groupNameMap.get(groupId) ?? groupId;
   }
 
+  if (!selectedTeamId) {
+    return null;
+  }
+
   return (
     <div className="space-y-4">
       <TeamHeader teams={teams} />
@@ -125,7 +139,7 @@ export function HomeContent({ teams, matches, standings, groups }: Props) {
               直近の試合
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="max-h-[560px] overflow-y-auto space-y-4">
             {upcomingMatches.map((match, idx) => {
               const isRefereeOnly =
                 match.refereeTeamId === selectedTeamId &&
@@ -133,63 +147,62 @@ export function HomeContent({ teams, matches, standings, groups }: Props) {
                 match.teamBId !== selectedTeamId;
               const isOngoing = getMatchState(match, now) === "playing";
               return (
-              <div key={match.id} className={idx > 0 ? "border-t pt-4" : ""}>
-                <div className={`space-y-2 ${
-                  isOngoing
-                    ? "rounded-lg border-2 border-primary p-3"
-                    : isRefereeOnly
-                      ? "rounded-lg border border-dashed bg-muted/50 p-3"
-                      : ""
-                }`}>
-                  {isRefereeOnly && !isOngoing && (
-                    <Badge variant="outline" className="mx-auto flex w-fit">
-                      審判担当
-                    </Badge>
-                  )}
-                  <div className="text-sm text-muted-foreground">
-                    {match.scheduledTime && !isNaN(new Date(match.scheduledTime).getTime()) && (
-                      <>
-                        {new Date(match.scheduledTime).toLocaleTimeString("ja-JP", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}{" "}
-                      </>
-                    )}
-                    {match.court}
-                  </div>
-                  <div className={`flex items-center justify-center gap-4 ${isRefereeOnly ? "text-sm font-normal text-muted-foreground" : "text-lg font-bold"}`}>
-                    <TeamLabel id={match.teamAId} />
-                    <span className="text-muted-foreground">vs</span>
-                    <TeamLabel id={match.teamBId} />
-                  </div>
-                  {isOngoing && (
-                    <div className="flex items-center justify-center gap-3 text-lg font-bold">
-                      <span>{match.scoreA ?? 0}</span>
-                      <span className="text-sm text-muted-foreground">-</span>
-                      <span>{match.scoreB ?? 0}</span>
-                    </div>
-                  )}
-                  {match.refereeTeamId && !isRefereeOnly && (
-                    <div className="text-center text-xs text-muted-foreground">
-                      審判: {teamName(match.refereeTeamId)}
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between text-sm">
-                    <Badge variant="outline">
-                      {match.type === "league"
-                        ? `予選 ${groupName(match.groupId)}`
-                        : "決勝トーナメント"}
-                    </Badge>
-                    {isOngoing ? (
-                      <Badge variant="destructive" className="rounded-sm text-[10px] px-1.5 py-0">
-                        試合中
+                <div key={match.id} className={idx > 0 ? "border-t pt-4" : ""}>
+                  <div className={`space-y-2 ${isOngoing
+                      ? "rounded-lg border-2 border-primary p-3"
+                      : isRefereeOnly
+                        ? "rounded-lg border border-dashed bg-muted p-3"
+                        : ""
+                    }`}>
+                    {isRefereeOnly && !isOngoing && (
+                      <Badge variant="outline" className="mx-auto flex w-fit">
+                        審判担当
                       </Badge>
-                    ) : getMatchState(match, now) === "upcoming" ? (
-                      <Countdown targetTime={match.scheduledTime} />
-                    ) : null}
+                    )}
+                    <div className="text-sm text-muted-foreground">
+                      {match.scheduledTime && !isNaN(new Date(match.scheduledTime).getTime()) && (
+                        <>
+                          {new Date(match.scheduledTime).toLocaleTimeString("ja-JP", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}{" "}
+                        </>
+                      )}
+                      {match.court}
+                    </div>
+                    <div className={`flex items-center justify-center gap-4 ${isRefereeOnly ? "text-sm font-normal text-muted-foreground" : "text-lg font-bold"}`}>
+                      <TeamLabel id={match.teamAId} />
+                      <span className="text-muted-foreground">vs</span>
+                      <TeamLabel id={match.teamBId} />
+                    </div>
+                    {isOngoing && (
+                      <div className="flex items-center justify-center gap-3 text-lg font-bold">
+                        <span>{match.scoreA ?? 0}</span>
+                        <span className="text-sm text-muted-foreground">-</span>
+                        <span>{match.scoreB ?? 0}</span>
+                      </div>
+                    )}
+                    {match.refereeTeamId && !isRefereeOnly && (
+                      <div className="text-center text-xs text-muted-foreground">
+                        審判: {teamName(match.refereeTeamId)}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between text-sm">
+                      <Badge variant="outline">
+                        {match.type === "league"
+                          ? `予選 ${groupName(match.groupId)}`
+                          : "決勝トーナメント"}
+                      </Badge>
+                      {isOngoing ? (
+                        <Badge variant="destructive" className="rounded-sm text-[10px] px-1.5 py-0">
+                          試合中
+                        </Badge>
+                      ) : getMatchState(match, now) === "upcoming" ? (
+                        <Countdown targetTime={match.scheduledTime} />
+                      ) : null}
+                    </div>
                   </div>
                 </div>
-              </div>
               );
             })}
           </CardContent>
@@ -285,6 +298,21 @@ export function HomeContent({ teams, matches, standings, groups }: Props) {
           </CardContent>
         </Card>
       )}
+
+      {/* チーム設定 */}
+      <Link
+        href={`/team-settings?${new URLSearchParams({
+          ...(eventId !== "default" ? { id: eventId } : {}),
+          teamId: selectedTeamId,
+        }).toString()}`}
+        className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
+      >
+        <div className="flex items-center gap-3">
+          <Palette className="h-5 w-5 text-primary" />
+          <span className="text-sm font-medium">チーム設定</span>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </Link>
     </div>
   );
 }

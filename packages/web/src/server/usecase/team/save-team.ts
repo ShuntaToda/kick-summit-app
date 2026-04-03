@@ -1,26 +1,25 @@
+import { nanoid } from "nanoid";
 import type { TeamRepository } from "../../domain/entities/team";
 
 type SaveTeamInput = {
   id?: string;
-  tournamentId: string;
+  eventId: string;
   groupId: string;
   name: string;
   color: string;
-  partyCount: number;
-  receiptName: string;
+  customValues: Record<string, string | number>;
 };
 
 export const createSaveTeam =
   (teamRepo: TeamRepository) =>
   async (input: SaveTeamInput): Promise<void> => {
-    const id = input.id ?? crypto.randomUUID();
+    const id = input.id ?? nanoid();
     await teamRepo.save({
       id,
-      tournamentId: input.tournamentId,
+      eventId: input.eventId,
       groupId: input.groupId,
       name: input.name,
       color: input.color,
-      partyCount: input.partyCount,
-      receiptName: input.receiptName,
+      customValues: input.customValues,
     });
   };

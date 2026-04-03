@@ -7,13 +7,13 @@ import {
 } from "../../domain/entities/group";
 
 export class DynamoGroupRepository implements GroupRepository {
-  async findAll(tournamentId: string): Promise<Group[]> {
+  async findAll(eventId: string): Promise<Group[]> {
     const result = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAMES.groups,
-        IndexName: "tournamentId-index",
-        KeyConditionExpression: "tournamentId = :tid",
-        ExpressionAttributeValues: { ":tid": tournamentId },
+        IndexName: "eventId-index",
+        KeyConditionExpression: "eventId = :tid",
+        ExpressionAttributeValues: { ":tid": eventId },
       }),
     );
     return (result.Items ?? []).map((item) => groupSchema.parse(item));

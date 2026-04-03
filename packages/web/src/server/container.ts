@@ -1,17 +1,18 @@
 import { cache } from "react";
-import { TOURNAMENT_ID } from "./infrastructure/dynamodb-client";
+import { DEFAULT_EVENT_ID } from "./infrastructure/dynamodb-client";
 import { DynamoTeamRepository } from "./infrastructure/repositories/team-repository";
 import { DynamoMatchRepository } from "./infrastructure/repositories/match-repository";
 import { DynamoBracketRepository } from "./infrastructure/repositories/bracket-repository";
-import { DynamoTournamentRepository } from "./infrastructure/repositories/tournament-repository";
+import { DynamoEventRepository } from "./infrastructure/repositories/event-repository";
 import { DynamoGroupRepository } from "./infrastructure/repositories/group-repository";
+import { DynamoCourtRepository } from "./infrastructure/repositories/court-repository";
 import { createGetTeams } from "./usecase/team/get-teams";
 import { createGetMatches, createGetMatch } from "./usecase/match/get-matches";
 import { createSubmitScore } from "./usecase/match/submit-score";
 import { createChangeMatchStatus } from "./usecase/match/change-match-status";
 import { createGetStandings } from "./usecase/standings/get-standings";
-import { createGetTournamentData } from "./usecase/tournament/get-tournament-data";
-import { createUpdateTournament } from "./usecase/tournament/update-tournament";
+import { createGetEventTournamentData } from "./usecase/event/get-event-tournament-data";
+import { createUpdateEvent } from "./usecase/event/update-event";
 import { createVerifyPassword } from "./usecase/auth/verify-password";
 import { createSaveGroup } from "./usecase/group/save-group";
 import { createDeleteGroup } from "./usecase/group/delete-group";
@@ -19,32 +20,47 @@ import { createSaveTeam } from "./usecase/team/save-team";
 import { createDeleteTeam } from "./usecase/team/delete-team";
 import { createSaveMatch } from "./usecase/match/save-match";
 import { createDeleteMatch } from "./usecase/match/delete-match";
+import { createSaveBracket } from "./usecase/bracket/save-bracket";
+import { createDeleteBracket } from "./usecase/bracket/delete-bracket";
+import { createGenerateBrackets } from "./usecase/bracket/generate-brackets";
+import { createResolveMatchResults } from "./usecase/bracket/resolve-match-results";
+import { createSaveCourt } from "./usecase/court/save-court";
+import { createDeleteCourt } from "./usecase/court/delete-court";
 
 // --- Repositories ---
 const teamRepo = new DynamoTeamRepository();
 const matchRepo = new DynamoMatchRepository();
 const bracketRepo = new DynamoBracketRepository();
-const tournamentRepo = new DynamoTournamentRepository();
+const eventRepo = new DynamoEventRepository();
 const groupRepo = new DynamoGroupRepository();
+const courtRepo = new DynamoCourtRepository();
 
-// --- Read (cache でリクエスト単位メモ化) ---
-export const getTeams = cache(createGetTeams(teamRepo, TOURNAMENT_ID));
-export const getGroups = cache(() => groupRepo.findAll(TOURNAMENT_ID));
-export const getMatches = cache(createGetMatches(matchRepo, TOURNAMENT_ID));
-export const getMatch = createGetMatch(matchRepo); // 引数ありなので cache 不要
-export const getStandings = cache(createGetStandings(matchRepo, teamRepo, groupRepo, TOURNAMENT_ID));
-export const getTournamentData = cache(createGetTournamentData(bracketRepo, matchRepo, teamRepo, TOURNAMENT_ID));
-export const getTournament = cache(() => tournamentRepo.findById(TOURNAMENT_ID));
+// --- Read (cache で引数ベースのリクエスト単位メモ化) ---
+export const getTeams = cache((eid: string) => createGetTeams(teamRepo, eid)());
+export const getGroups = cache((eid: string) => groupRepo.findAll(eid));
+export const getMatches = cache((eid: string) => createGetMatches(matchRepo, eid)());
+export const getMatch = createGetMatch(matchRepo);
+export const getBrackets = cache((eid: string) => bracketRepo.findAll(eid));
+export const getStandings = cache((eid: string) => createGetStandings(matchRepo, teamRepo, groupRepo, eid)());
+export const getEventTournamentData = cache((eid: string) => createGetEventTournamentData(bracketRepo, matchRepo, teamRepo, eid)());
+export const getEvent = cache((eid: string) => eventRepo.findById(eid));
+export const getCourts = cache((eid: string) => courtRepo.findAll(eid));
 
 // --- Write ---
 export const submitScore = createSubmitScore(matchRepo);
 export const changeMatchStatus = createChangeMatchStatus(matchRepo);
-export const verifyPassword = createVerifyPassword(tournamentRepo, TOURNAMENT_ID);
-export const updateTournament = createUpdateTournament(tournamentRepo, TOURNAMENT_ID);
+export const verifyPassword = (eid: string) => createVerifyPassword(eventRepo, eid);
+export const updateEvent = (eid: string) => createUpdateEvent(eventRepo, eid);
 export const saveGroup = createSaveGroup(groupRepo);
 export const deleteGroup = createDeleteGroup(groupRepo);
 export const saveTeam = createSaveTeam(teamRepo);
 export const deleteTeam = createDeleteTeam(teamRepo);
 export const saveMatch = createSaveMatch(matchRepo);
 export const deleteMatch = createDeleteMatch(matchRepo);
-export { TOURNAMENT_ID };
+export const saveBracket = createSaveBracket(bracketRepo, matchRepo);
+export const deleteBracket = createDeleteBracket(bracketRepo, matchRepo);
+export const generateBrackets = createGenerateBrackets(bracketRepo, matchRepo);
+export const resolveMatchResults = createResolveMatchResults(bracketRepo, matchRepo);
+export const saveCourt = createSaveCourt(courtRepo);
+export const deleteCourt = createDeleteCourt(courtRepo);
+export { DEFAULT_EVENT_ID };

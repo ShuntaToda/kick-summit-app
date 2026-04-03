@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { saveMatch, deleteMatch } from "@/lib/actions";
+import { useState, useEffect, useActionState } from "react";
+import { saveScheduleFormAction } from "@/lib/actions/match";
+import type { ActionState } from "@/lib/actions/helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,14 +15,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Trash2, Plus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { SubmitButton } from "@/components/ui/submit-button";
 import type { Match } from "@/server/domain/entities/match";
 import type { Team } from "@/server/domain/entities/team";
 import type { Group } from "@/server/domain/entities/group";
+import type { Court } from "@/server/domain/entities/court";
 
 type Props = {
   teams: Team[];
   groups: Group[];
   existingMatches: Match[];
+  courts: Court[];
+  eventId: string;
 };
 
 type MatchDraft = {
@@ -143,7 +148,11 @@ function scheduleMatches(
   const lastPlayed = new Map<string, number>();
   const scheduled: MatchDraft[] = [];
 
-  for (let slotIdx = 0; slotIdx < slots.length && remaining.length > 0; slotIdx++) {
+  for (
+    let slotIdx = 0;
+    slotIdx < slots.length && remaining.length > 0;
+    slotIdx++
+  ) {
     const playingThisSlot = new Set<string>();
     const slotMatches: Omit<MatchDraft, "refereeTeamId">[] = [];
 
@@ -160,7 +169,11 @@ function scheduleMatches(
 
     for (const { index, match } of scored) {
       if (courtIdx >= courts.length) break;
-      if (playingThisSlot.has(match.teamAId) || playingThisSlot.has(match.teamBId)) continue;
+      if (
+        playingThisSlot.has(match.teamAId) ||
+        playingThisSlot.has(match.teamBId)
+      )
+        continue;
 
       playingThisSlot.add(match.teamAId);
       playingThisSlot.add(match.teamBId);
@@ -230,14 +243,30 @@ function generateSchedule(
 
       const rounds = generateRoundRobin(groupTeams.map((t) => t.id));
       const matches = rounds.flat().map((m) => ({ groupId: group.id, ...m }));
-      const slots = generateTimeSlots(config.startTime, config.interval, config.breaks, matches.length + 20);
-      allScheduled.push(...scheduleMatches(matches, slots, courts, allTeamIds, config.autoReferee));
+      const slots = generateTimeSlots(
+        config.startTime,
+        config.interval,
+        config.breaks,
+        matches.length + 20,
+      );
+      allScheduled.push(
+        ...scheduleMatches(
+          matches,
+          slots,
+          courts,
+          allTeamIds,
+          config.autoReferee,
+        ),
+      );
     }
 
-    return allScheduled.sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
+    return allScheduled.sort((a, b) =>
+      a.scheduledTime.localeCompare(b.scheduledTime),
+    );
   }
 
-  const allMatches: { groupId: string; teamAId: string; teamBId: string }[] = [];
+  const allMatches: { groupId: string; teamAId: string; teamBId: string }[] =
+    [];
 
   for (const group of targetGroups) {
     const groupTeams = teams.filter((t) => t.groupId === group.id);
@@ -251,25 +280,41 @@ function generateSchedule(
     }
   }
 
-  const slots = generateTimeSlots(config.startTime, config.interval, config.breaks, allMatches.length + 20);
-  return scheduleMatches(allMatches, slots, config.courts, allTeamIds, config.autoReferee);
+  const slots = generateTimeSlots(
+    config.startTime,
+    config.interval,
+    config.breaks,
+    allMatches.length + 20,
+  );
+  return scheduleMatches(
+    allMatches,
+    slots,
+    config.courts,
+    allTeamIds,
+    config.autoReferee,
+  );
 }
+
+const init: ActionState = { success: false };
 
 // --- コンポーネント ---
 
-export function ScheduleGenerator({ teams, groups, existingMatches }: Props) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+export function ScheduleGenerator({
+  teams,
+  groups,
+  existingMatches,
+  courts: courtsMaster,
+  eventId,
+}: Props) {
+  const [saveState, saveAction] = useActionState(saveScheduleFormAction, init);
 
   const [targetGroup, setTargetGroup] = useState<string>("all");
   const [startTime, setStartTime] = useState("");
   const [matchDuration, setMatchDuration] = useState(10);
   const [interval, setInterval] = useState(15);
   const [courtMode, setCourtMode] = useState<CourtMode>("shared");
-  const [courts, setCourts] = useState(["コート1", "コート2"]);
-  const [newCourt, setNewCourt] = useState("");
+  const [courts, setCourts] = useState<string[]>([]);
   const [groupCourts, setGroupCourts] = useState<Record<string, string[]>>({});
-  const [newGroupCourt, setNewGroupCourt] = useState<Record<string, string>>({});
   const [breaks, setBreaks] = useState<BreakPeriod[]>([]);
   const [autoReferee, setAutoReferee] = useState(true);
   const [newBreakStart, setNewBreakStart] = useState("");
@@ -280,37 +325,33 @@ export function ScheduleGenerator({ teams, groups, existingMatches }: Props) {
   const groupMap = new Map(groups.map((g) => [g.id, g]));
   const teamName = (id: string) => teamMap.get(id)?.name ?? id;
 
-  const targetGroups = targetGroup === "all"
-    ? groups
-    : groups.filter((g) => g.id === targetGroup);
+  const targetGroups =
+    targetGroup === "all" ? groups : groups.filter((g) => g.id === targetGroup);
 
   const existingTargetMatches = existingMatches.filter(
-    (m) => m.type === "league" && (targetGroup === "all" || m.groupId === targetGroup),
+    (m) =>
+      m.type === "league" &&
+      (targetGroup === "all" || m.groupId === targetGroup),
   );
 
-  function addGroupCourt(groupId: string) {
-    const name = (newGroupCourt[groupId] ?? "").trim();
-    if (!name) return;
-    setGroupCourts({
-      ...groupCourts,
-      [groupId]: [...(groupCourts[groupId] ?? []), name],
-    });
-    setNewGroupCourt({ ...newGroupCourt, [groupId]: "" });
-  }
+  const hasCourts =
+    courtMode === "shared"
+      ? courts.length > 0
+      : targetGroups.every((g) => (groupCourts[g.id] ?? []).length > 0);
 
-  function removeGroupCourt(groupId: string, idx: number) {
-    setGroupCourts({
-      ...groupCourts,
-      [groupId]: (groupCourts[groupId] ?? []).filter((_, j) => j !== idx),
-    });
-  }
+  const [courtError, setCourtError] = useState(false);
 
-  const hasCourts = courtMode === "shared"
-    ? courts.length > 0
-    : targetGroups.every((g) => (groupCourts[g.id] ?? []).length > 0);
+  useEffect(() => {
+    if (saveState.success) setPreview(null);
+  }, [saveState.timestamp]);
 
   function handleGenerate() {
-    if (!startTime || !hasCourts) return;
+    if (!hasCourts) {
+      setCourtError(true);
+      return;
+    }
+    setCourtError(false);
+    if (!startTime) return;
     const result = generateSchedule(targetGroups, teams, {
       startTime,
       interval,
@@ -323,29 +364,23 @@ export function ScheduleGenerator({ teams, groups, existingMatches }: Props) {
     setPreview(result);
   }
 
-  function handleSave() {
-    if (!preview) return;
-    startTransition(async () => {
-      await Promise.all(existingTargetMatches.map((m) => deleteMatch(m.id)));
-      await Promise.all(
-        preview.map((m) =>
-          saveMatch({
-            type: "league",
+  const savePayload = preview
+    ? {
+        deleteIds: JSON.stringify(existingTargetMatches.map((m) => m.id)),
+        matches: JSON.stringify(
+          preview.map((m) => ({
+            type: "league" as const,
             groupId: m.groupId,
             teamAId: m.teamAId,
             teamBId: m.teamBId,
             scheduledTime: m.scheduledTime,
             durationMinutes: matchDuration,
             court: m.court,
-            status: "scheduled",
             refereeTeamId: m.refereeTeamId,
-          }),
+          })),
         ),
-      );
-      setPreview(null);
-      router.refresh();
-    });
-  }
+      }
+    : null;
 
   // プレビューをタイムスロット別にグループ化
   const previewBySlot = preview
@@ -367,18 +402,90 @@ export function ScheduleGenerator({ teams, groups, existingMatches }: Props) {
         {/* 対象グループ */}
         <div className="space-y-1">
           <Label className="text-xs">対象</Label>
-          <Select value={targetGroup} onValueChange={(v) => { setTargetGroup(v); if (v !== "all") setCourtMode("shared"); setPreview(null); }}>
+          <Select
+            value={targetGroup}
+            onValueChange={(v) => {
+              setTargetGroup(v);
+              if (v !== "all") setCourtMode("shared");
+              setPreview(null);
+            }}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全グループ</SelectItem>
               {groups.map((g) => (
-                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                <SelectItem key={g.id} value={g.id}>
+                  {g.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+
+        {/* コート設定 */}
+        {targetGroup !== "all" || courtMode === "shared" ? (
+          <div className="space-y-2">
+            <Label className="text-xs">使用コート</Label>
+            <div className="flex flex-wrap gap-3">
+              {courtsMaster.map((c) => (
+                <label key={c.id} className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={courts.includes(c.name)}
+                    onCheckedChange={(checked) => {
+                      setCourts(
+                        checked
+                          ? [...courts, c.name]
+                          : courts.filter((name) => name !== c.name),
+                      );
+                      setCourtError(false);
+                    }}
+                  />
+                  {c.name}
+                </label>
+              ))}
+            </div>
+            {courtsMaster.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                大会設定でコートを登録してください
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {targetGroups.map((group) => (
+              <div key={group.id} className="space-y-2 rounded-md border p-3">
+                <Label className="text-xs font-medium">
+                  {group.name} のコート
+                </Label>
+                <div className="flex flex-wrap gap-3">
+                  {courtsMaster.map((c) => (
+                    <label
+                      key={c.id}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <Checkbox
+                        checked={(groupCourts[group.id] ?? []).includes(c.name)}
+                        onCheckedChange={(checked) => {
+                          const current = groupCourts[group.id] ?? [];
+                          setGroupCourts({
+                            ...groupCourts,
+                            [group.id]: checked
+                              ? [...current, c.name]
+                              : current.filter((name) => name !== c.name),
+                          });
+                          setCourtError(false);
+                        }}
+                      />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* 設定フォーム */}
         <div className="grid grid-cols-3 gap-3">
@@ -415,108 +522,23 @@ export function ScheduleGenerator({ teams, groups, existingMatches }: Props) {
         {targetGroup === "all" && (
           <div className="space-y-2">
             <Label className="text-xs">コート割り当て</Label>
-            <Select value={courtMode} onValueChange={(v) => { setCourtMode(v as CourtMode); setPreview(null); }}>
+            <Select
+              value={courtMode}
+              onValueChange={(v) => {
+                setCourtMode(v as CourtMode);
+                setPreview(null);
+              }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="shared">共有（全グループで共有）</SelectItem>
-                <SelectItem value="per-group">グループ別（専用コート）</SelectItem>
+                <SelectItem value="per-group">
+                  グループ別（専用コート）
+                </SelectItem>
               </SelectContent>
             </Select>
-          </div>
-        )}
-
-        {/* コート設定 */}
-        {targetGroup !== "all" || courtMode === "shared" ? (
-          <div className="space-y-2">
-            <Label className="text-xs">コート</Label>
-            <div className="flex flex-wrap gap-2">
-              {courts.map((c, i) => (
-                <span
-                  key={i}
-                  className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs"
-                >
-                  {c}
-                  <button
-                    onClick={() => setCourts(courts.filter((_, j) => j !== i))}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="コート名"
-                value={newCourt}
-                onChange={(e) => setNewCourt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newCourt.trim()) {
-                    setCourts([...courts, newCourt.trim()]);
-                    setNewCourt("");
-                  }
-                }}
-                className="flex-1"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  if (newCourt.trim()) {
-                    setCourts([...courts, newCourt.trim()]);
-                    setNewCourt("");
-                  }
-                }}
-              >
-                <Plus className="mr-1 h-3 w-3" />
-                追加
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {targetGroups.map((group) => (
-              <div key={group.id} className="space-y-2 rounded-md border p-3">
-                <Label className="text-xs font-medium">{group.name} のコート</Label>
-                <div className="flex flex-wrap gap-2">
-                  {(groupCourts[group.id] ?? []).map((c, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs"
-                    >
-                      {c}
-                      <button
-                        onClick={() => removeGroupCourt(group.id, i)}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="コート名"
-                    value={newGroupCourt[group.id] ?? ""}
-                    onChange={(e) => setNewGroupCourt({ ...newGroupCourt, [group.id]: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") addGroupCourt(group.id);
-                    }}
-                    className="flex-1"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => addGroupCourt(group.id)}
-                  >
-                    <Plus className="mr-1 h-3 w-3" />
-                    追加
-                  </Button>
-                </div>
-              </div>
-            ))}
           </div>
         )}
 
@@ -526,10 +548,15 @@ export function ScheduleGenerator({ teams, groups, existingMatches }: Props) {
             type="button"
             role="switch"
             aria-checked={autoReferee}
-            onClick={() => { setAutoReferee(!autoReferee); setPreview(null); }}
+            onClick={() => {
+              setAutoReferee(!autoReferee);
+              setPreview(null);
+            }}
             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${autoReferee ? "bg-primary" : "bg-muted"}`}
           >
-            <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-sm transition-transform ${autoReferee ? "translate-x-4" : "translate-x-0"}`} />
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-sm transition-transform ${autoReferee ? "translate-x-4" : "translate-x-0"}`}
+            />
           </button>
           <Label className="text-xs">余りチームを審判に自動割り当て</Label>
         </div>
@@ -569,7 +596,10 @@ export function ScheduleGenerator({ teams, groups, existingMatches }: Props) {
               variant="outline"
               onClick={() => {
                 if (newBreakStart && newBreakEnd) {
-                  setBreaks([...breaks, { start: newBreakStart, end: newBreakEnd }]);
+                  setBreaks([
+                    ...breaks,
+                    { start: newBreakStart, end: newBreakEnd },
+                  ]);
                   setNewBreakStart("");
                   setNewBreakEnd("");
                 }
@@ -581,7 +611,13 @@ export function ScheduleGenerator({ teams, groups, existingMatches }: Props) {
           </div>
         </div>
 
-        <Button onClick={handleGenerate} disabled={!startTime || !hasCourts}>
+        {courtError && (
+          <p className="text-xs text-destructive">
+            使用コートを1つ以上選択してください
+          </p>
+        )}
+
+        <Button onClick={handleGenerate} disabled={!startTime}>
           スケジュール生成
         </Button>
 
@@ -595,15 +631,22 @@ export function ScheduleGenerator({ teams, groups, existingMatches }: Props) {
               {previewBySlot.map(([time, matches]) => (
                 <div key={time} className="flex gap-3">
                   <div className="w-32 shrink-0 pt-0.5 text-xs font-medium text-muted-foreground">
-                    {formatSlotTime(time)} - {extractTime(addMinutes(time, matchDuration))}
+                    {formatSlotTime(time)} -{" "}
+                    {extractTime(addMinutes(time, matchDuration))}
                   </div>
                   <div className="flex-1 space-y-1">
                     {matches.map((m, i) => (
                       <div key={i} className="text-xs">
-                        <span className="text-muted-foreground">{m.court}:</span>{" "}
-                        <span className="font-medium">{teamName(m.teamAId)}</span>
+                        <span className="text-muted-foreground">
+                          {m.court}:
+                        </span>{" "}
+                        <span className="font-medium">
+                          {teamName(m.teamAId)}
+                        </span>
                         <span className="text-muted-foreground"> vs </span>
-                        <span className="font-medium">{teamName(m.teamBId)}</span>
+                        <span className="font-medium">
+                          {teamName(m.teamBId)}
+                        </span>
                         <span className="ml-1 text-muted-foreground">
                           ({groupMap.get(m.groupId)?.name})
                         </span>
@@ -621,13 +664,19 @@ export function ScheduleGenerator({ teams, groups, existingMatches }: Props) {
 
             {existingTargetMatches.length > 0 && (
               <p className="text-xs text-destructive">
-                ※ 既存のリーグ戦 {existingTargetMatches.length}試合は削除されます
+                ※ 既存のリーグ戦 {existingTargetMatches.length}
+                試合は削除されます
               </p>
             )}
 
-            <Button onClick={handleSave} disabled={isPending}>
-              {isPending ? "保存中..." : "保存"}
-            </Button>
+            <form action={saveAction}>
+              <input type="hidden" name="eventId" value={eventId} />
+              <input type="hidden" name="deleteIds" value={savePayload?.deleteIds ?? "[]"} />
+              <input type="hidden" name="matches" value={savePayload?.matches ?? "[]"} />
+              <SubmitButton pendingText="保存中...">
+                保存
+              </SubmitButton>
+            </form>
           </div>
         )}
       </CardContent>

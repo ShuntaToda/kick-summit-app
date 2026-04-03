@@ -5,7 +5,7 @@ export type MatchStatus = "scheduled" | "ongoing" | "finished";
 export type MatchType = "league" | "tournament";
 
 /** 大会情報 */
-export interface Tournament {
+export interface Event {
   id: string;
   name: string;
   date: string;
@@ -37,7 +37,7 @@ export interface Match {
 }
 
 /** トーナメント枠 */
-export interface TournamentBracket {
+export interface Bracket {
   id: string;
   round: number;
   slot: number;

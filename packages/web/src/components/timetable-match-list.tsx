@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "@/hooks/use-admin";
-import { submitScore } from "@/lib/actions";
+import { submitScore } from "@/lib/actions/match";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

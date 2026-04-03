@@ -6,12 +6,14 @@ import { LeagueTabs } from "@/components/league-tabs";
 import { Refresher } from "@/components/refresher";
 import { CardSkeleton } from "@/components/section-skeleton";
 
-async function LeagueData() {
+type PageProps = { searchParams: Promise<{ id?: string }> };
+
+async function LeagueData({ eventId }: { eventId: string }) {
   const [standings, groups, teams, matches] = await Promise.all([
-    container.getStandings(),
-    container.getGroups(),
-    container.getTeams(),
-    container.getMatches(),
+    container.getStandings(eventId),
+    container.getGroups(eventId),
+    container.getTeams(eventId),
+    container.getMatches(eventId),
   ]);
 
   const groupNames = Object.fromEntries(groups.map((g) => [g.id, g.name]));
@@ -26,13 +28,16 @@ async function LeagueData() {
   );
 }
 
-export default function LeaguePage() {
+export default async function LeaguePage({ searchParams }: PageProps) {
+  const { id } = await searchParams;
+  const eventId = id || "default";
+
   return (
     <div className="space-y-4">
       <Refresher />
       <h1 className="text-xl font-bold">リーグ表</h1>
       <Suspense fallback={<CardSkeleton count={4} />}>
-        <LeagueData />
+        <LeagueData eventId={eventId} />
       </Suspense>
     </div>
   );

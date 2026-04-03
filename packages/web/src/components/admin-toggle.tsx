@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Lock, PenLine, ChevronRight, LogOut, Settings, Users, Layers, Calendar } from "lucide-react";
+import { Lock, PenLine, ChevronRight, LogOut, Settings, Users, Layers, Calendar, Trophy, MapPin } from "lucide-react";
 import { useAdmin } from "@/hooks/use-admin";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,15 +14,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function AdminToggle() {
+export function AdminToggle({ eventId }: { eventId: string }) {
   const { isAdmin, login, logout } = useAdmin();
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
 
+  const idSuffix = eventId !== "default" ? `?id=${encodeURIComponent(eventId)}` : "";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await login(password);
+    const ok = await login(eventId, password);
     if (ok) {
       setOpen(false);
       setPassword("");
@@ -36,7 +38,7 @@ export function AdminToggle() {
     return (
       <div className="space-y-1">
         <Link
-          href="/admin/settings"
+          href={`/admin/settings${idSuffix}`}
           className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
         >
           <div className="flex items-center gap-3">
@@ -46,7 +48,17 @@ export function AdminToggle() {
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
         <Link
-          href="/admin/groups"
+          href={`/admin/courts${idSuffix}`}
+          className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
+        >
+          <div className="flex items-center gap-3">
+            <MapPin className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium">コート管理</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+        <Link
+          href={`/admin/groups${idSuffix}`}
           className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
         >
           <div className="flex items-center gap-3">
@@ -56,7 +68,7 @@ export function AdminToggle() {
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
         <Link
-          href="/admin/teams"
+          href={`/admin/teams${idSuffix}`}
           className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
         >
           <div className="flex items-center gap-3">
@@ -66,7 +78,7 @@ export function AdminToggle() {
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
         <Link
-          href="/admin/matches"
+          href={`/admin/matches${idSuffix}`}
           className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
         >
           <div className="flex items-center gap-3">
@@ -76,7 +88,17 @@ export function AdminToggle() {
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
         <Link
-          href="/admin/score"
+          href={`/admin/brackets${idSuffix}`}
+          className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
+        >
+          <div className="flex items-center gap-3">
+            <Trophy className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium">トーナメント管理</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+        <Link
+          href={`/admin/score${idSuffix}`}
           className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
         >
           <div className="flex items-center gap-3">

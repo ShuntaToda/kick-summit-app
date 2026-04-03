@@ -8,7 +8,7 @@ import { Refresher } from "@/components/refresher";
 import { CardSkeleton } from "@/components/section-skeleton";
 import type { Match } from "@/server/domain/entities/match";
 import type { Team } from "@/server/domain/entities/team";
-import type { TournamentBracket } from "@/server/domain/entities/bracket";
+import type { Bracket } from "@/server/domain/entities/bracket";
 
 function roundLabel(round: number, totalRounds: number) {
   if (round === totalRounds) return "決勝";
@@ -16,8 +16,8 @@ function roundLabel(round: number, totalRounds: number) {
   return `ラウンド${round}`;
 }
 
-function groupByRound(brackets: TournamentBracket[]) {
-  const map = new Map<number, TournamentBracket[]>();
+function groupByRound(brackets: Bracket[]) {
+  const map = new Map<number, Bracket[]>();
   for (const b of brackets) {
     const list = map.get(b.round) ?? [];
     list.push(b);
@@ -31,19 +31,53 @@ function groupByRound(brackets: TournamentBracket[]) {
     }));
 }
 
+function getTeamDisplayName(
+  teamId: string | null,
+  ref: Bracket["homeRef"] | Bracket["awayRef"],
+  teamMap: Map<string, Team>,
+  bracketByMatchId: Map<string, Bracket>,
+  groupMap: Map<string, { name: string }>,
+): string {
+  if (teamId) {
+    return teamMap.get(teamId)?.name ?? "TBD";
+  }
+  if (!ref) return "TBD";
+  if (ref.type === "team") {
+    return teamMap.get(ref.teamId)?.name ?? "TBD";
+  }
+  if (ref.type === "group-rank") {
+    const group = groupMap.get(ref.groupId);
+    return `${group?.name ?? "?"}${ref.rank}位`;
+  }
+  const bracket = bracketByMatchId.get(ref.matchId);
+  const label = bracket?.matchLabel || "不明な試合";
+  return ref.result === "winner" ? `${label}の勝者` : `${label}の敗者`;
+}
+
 function BracketMatch({
+  bracket,
   match,
   teamMap,
+  bracketByMatchId,
+  groupMap,
 }: {
+  bracket: Bracket;
   match: Match;
   teamMap: Map<string, Team>;
+  bracketByMatchId: Map<string, Bracket>;
+  groupMap: Map<string, { name: string }>;
 }) {
-  const teamAName = match.teamAId ? teamMap.get(match.teamAId)?.name ?? "TBD" : "TBD";
-  const teamBName = match.teamBId ? teamMap.get(match.teamBId)?.name ?? "TBD" : "TBD";
+  const teamAName = getTeamDisplayName(match.teamAId, bracket.homeRef, teamMap, bracketByMatchId, groupMap);
+  const teamBName = getTeamDisplayName(match.teamBId, bracket.awayRef, teamMap, bracketByMatchId, groupMap);
 
   return (
     <Card>
       <CardContent className="py-3">
+        {bracket.matchLabel && (
+          <div className="mb-1 text-xs text-muted-foreground">
+            {bracket.matchLabel}
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <div className="text-sm font-medium">{teamAName}</div>
@@ -93,11 +127,19 @@ function BracketMatch({
   );
 }
 
-async function TournamentData() {
-  const { brackets, matches, teams } = await container.getTournamentData();
+type PageProps = { searchParams: Promise<{ id?: string }> };
+
+async function TournamentData({ eventId }: { eventId: string }) {
+  const [tournamentData, groups] = await Promise.all([
+    container.getEventTournamentData(eventId),
+    container.getGroups(eventId),
+  ]);
+  const { brackets, matches, teams } = tournamentData;
 
   const teamMap = new Map(teams.map((t) => [t.id, t]));
   const matchMap = new Map(matches.map((m) => [m.id, m]));
+  const bracketByMatchId = new Map(brackets.map((b) => [b.matchId, b]));
+  const groupMap = new Map(groups.map((g) => [g.id, g]));
   const rounds = groupByRound(brackets);
 
   if (brackets.length === 0) {
@@ -123,8 +165,11 @@ async function TournamentData() {
             return (
               <BracketMatch
                 key={bracket.id}
+                bracket={bracket}
                 match={match}
                 teamMap={teamMap}
+                bracketByMatchId={bracketByMatchId}
+                groupMap={groupMap}
               />
             );
           })}
@@ -134,13 +179,16 @@ async function TournamentData() {
   );
 }
 
-export default function TournamentPage() {
+export default async function TournamentPage({ searchParams }: PageProps) {
+  const { id } = await searchParams;
+  const eventId = id || "default";
+
   return (
     <div className="space-y-6">
       <Refresher />
       <h1 className="text-xl font-bold">トーナメント表</h1>
       <Suspense fallback={<CardSkeleton count={4} />}>
-        <TournamentData />
+        <TournamentData eventId={eventId} />
       </Suspense>
     </div>
   );

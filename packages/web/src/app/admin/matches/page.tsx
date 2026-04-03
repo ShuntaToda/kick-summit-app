@@ -8,37 +8,44 @@ import { ScheduleGenerator } from "@/components/schedule-generator";
 import { MatchManager } from "@/components/match-manager";
 import { FormSkeleton, CardSkeleton } from "@/components/section-skeleton";
 
-async function ScheduleGeneratorSection() {
-  const [teams, groups, matches] = await Promise.all([
-    container.getTeams(),
-    container.getGroups(),
-    container.getMatches(),
+type PageProps = { searchParams: Promise<{ id?: string }> };
+
+async function ScheduleGeneratorSection({ eventId }: { eventId: string }) {
+  const [teams, groups, matches, courts] = await Promise.all([
+    container.getTeams(eventId),
+    container.getGroups(eventId),
+    container.getMatches(eventId),
+    container.getCourts(eventId),
   ]);
-  return <ScheduleGenerator teams={teams} groups={groups} existingMatches={matches} />;
+  return <ScheduleGenerator teams={teams} groups={groups} existingMatches={matches} courts={courts} eventId={eventId} />;
 }
 
-async function MatchListSection() {
+async function MatchListSection({ eventId }: { eventId: string }) {
   const [matches, teams, groups] = await Promise.all([
-    container.getMatches(),
-    container.getTeams(),
-    container.getGroups(),
+    container.getMatches(eventId),
+    container.getTeams(eventId),
+    container.getGroups(eventId),
   ]);
-  return <MatchManager matches={matches} teams={teams} groups={groups} />;
+  return <MatchManager matches={matches} teams={teams} groups={groups} eventId={eventId} />;
 }
 
-export default function MatchesPage() {
+export default async function MatchesPage({ searchParams }: PageProps) {
+  const { id } = await searchParams;
+  const eventId = id || "default";
+  const backHref = id ? `/more?id=${id}` : "/more";
+
   return (
     <div className="space-y-4">
-      <Link href="/more" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+      <Link href={backHref} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft className="mr-1 h-4 w-4" />
         管理メニュー
       </Link>
       <h1 className="text-xl font-bold">試合管理</h1>
       <Suspense fallback={<FormSkeleton />}>
-        <ScheduleGeneratorSection />
+        <ScheduleGeneratorSection eventId={eventId} />
       </Suspense>
       <Suspense fallback={<CardSkeleton count={6} />}>
-        <MatchListSection />
+        <MatchListSection eventId={eventId} />
       </Suspense>
     </div>
   );

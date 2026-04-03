@@ -4,12 +4,12 @@ import type { GroupRepository } from "../../domain/entities/group";
 import { computeStandings, type StandingsRow } from "../../domain/services/standings-service";
 
 export const createGetStandings =
-  (matchRepo: MatchRepository, teamRepo: TeamRepository, groupRepo: GroupRepository, tournamentId: string) =>
+  (matchRepo: MatchRepository, teamRepo: TeamRepository, groupRepo: GroupRepository, eventId: string) =>
   async (groupId?: string): Promise<Record<string, StandingsRow[]>> => {
     const [matches, teams, groups] = await Promise.all([
-      matchRepo.findAll(tournamentId),
-      teamRepo.findAll(tournamentId),
-      groupRepo.findAll(tournamentId),
+      matchRepo.findAll(eventId),
+      teamRepo.findAll(eventId),
+      groupRepo.findAll(eventId),
     ]);
 
     const targetGroupIds = groupId

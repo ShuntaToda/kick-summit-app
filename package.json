@@ -2,7 +2,9 @@
   "name": "kick-summit-app",
   "private": true,
   "scripts": {
+    "start:dev": "pnpm db:up && pnpm db:seed && turbo dev",
     "dev": "turbo dev",
+    "db:up": "docker compose up -d && until curl -s http://localhost:8000 > /dev/null 2>&1; do sleep 1; done && echo '✓ DynamoDB Local ready'",
     "db:start": "docker compose up -d",
     "db:stop": "docker compose down",
     "db:seed": "tsx scripts/seed-local.ts --local",

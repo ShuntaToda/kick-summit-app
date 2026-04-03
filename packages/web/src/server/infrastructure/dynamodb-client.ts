@@ -12,16 +12,21 @@ const client = new DynamoDBClient({
   }),
 });
 
-export const docClient = DynamoDBDocumentClient.from(client);
+export const docClient = DynamoDBDocumentClient.from(client, {
+  marshallOptions: {
+    removeUndefinedValues: true,
+  },
+});
 
-export const TOURNAMENT_ID = "default";
+export const DEFAULT_EVENT_ID = "default";
 
 const prefix = process.env.TABLE_PREFIX ?? "kick-summit";
 
 export const TABLE_NAMES = {
-  tournaments: `${prefix}-tournaments`,
+  events: `${prefix}-events`,
   groups: `${prefix}-groups`,
   teams: `${prefix}-teams`,
   matches: `${prefix}-matches`,
   brackets: `${prefix}-brackets`,
+  courts: `${prefix}-courts`,
 } as const;
