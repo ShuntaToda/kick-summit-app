@@ -77,6 +77,7 @@ export const createSaveBracket =
       court: input.court ?? existing?.court ?? "A",
       status: existing?.status ?? ("scheduled" as MatchStatus),
       refereeTeamId: existing?.refereeTeamId ?? null,
+      refereeTeamId2: existing?.refereeTeamId2 ?? null,
       customLeagueId: null,
       teamARefLabel: null,
       teamBRefLabel: null,

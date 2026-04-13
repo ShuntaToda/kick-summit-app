@@ -22,6 +22,7 @@ export const matchSchema = z.object({
   court: z.string().min(1),
   status: matchStatusSchema,
   refereeTeamId: z.string().nullish().transform((v) => v ?? null),
+  refereeTeamId2: z.string().nullish().transform((v) => v ?? null),
   customLeagueId: z.string().nullish().transform((v) => v ?? null),
   teamARefLabel: z.string().nullish().transform((v) => v ?? null),
   teamBRefLabel: z.string().nullish().transform((v) => v ?? null),

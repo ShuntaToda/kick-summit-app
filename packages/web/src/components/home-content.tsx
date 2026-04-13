@@ -15,7 +15,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Countdown } from "@/components/countdown";
 import { TeamHeader } from "@/components/team-header";
 import { LeagueCrossTable } from "@/components/league-cross-table";
 import type { Team } from "@/server/domain/entities/team";
@@ -88,7 +87,8 @@ export function HomeContent({
         if (
           m.teamAId !== selectedTeamId &&
           m.teamBId !== selectedTeamId &&
-          m.refereeTeamId !== selectedTeamId
+          m.refereeTeamId !== selectedTeamId &&
+          m.refereeTeamId2 !== selectedTeamId
         )
           return false;
         return true;
@@ -200,7 +200,8 @@ export function HomeContent({
           <CardContent className="max-h-[560px] overflow-y-auto space-y-4">
             {upcomingMatches.map((match, idx) => {
               const isRefereeOnly =
-                match.refereeTeamId === selectedTeamId &&
+                (match.refereeTeamId === selectedTeamId ||
+                  match.refereeTeamId2 === selectedTeamId) &&
                 match.teamAId !== selectedTeamId &&
                 match.teamBId !== selectedTeamId;
               const isOngoing = getMatchState(match, now) === "playing";
@@ -215,34 +216,53 @@ export function HomeContent({
                           : ""
                     }`}
                   >
-                    {isRefereeOnly && !isOngoing && (
-                      <Badge variant="outline" className="mx-auto flex w-fit">
-                        審判担当
-                      </Badge>
-                    )}
-                    <div className="text-xs text-muted-foreground">
-                      {match.scheduledTime &&
-                        !isNaN(new Date(match.scheduledTime).getTime()) && (
-                          <span>
-                            {new Date(match.scheduledTime).toLocaleTimeString(
-                              "ja-JP",
-                              { hour: "2-digit", minute: "2-digit" },
-                            )}
-                            {" - "}
-                            {new Date(
-                              new Date(match.scheduledTime).getTime() +
-                                match.durationMinutes * 60 * 1000,
-                            ).toLocaleTimeString("ja-JP", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-muted-foreground">
+                        {match.scheduledTime &&
+                          !isNaN(new Date(match.scheduledTime).getTime()) && (
+                            <span>
+                              {new Date(match.scheduledTime).toLocaleTimeString(
+                                "ja-JP",
+                                { hour: "2-digit", minute: "2-digit" },
+                              )}
+                              {" - "}
+                              {new Date(
+                                new Date(match.scheduledTime).getTime() +
+                                  match.durationMinutes * 60 * 1000,
+                              ).toLocaleTimeString("ja-JP", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          )}
+                        {match.court && (
+                          <span className={match.scheduledTime ? " ml-1.5" : ""}>
+                            {match.court}
                           </span>
                         )}
-                      {match.court && (
-                        <span className={match.scheduledTime ? " ml-1.5" : ""}>
-                          {match.court}
-                        </span>
-                      )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {isOngoing && (
+                          <Badge
+                            variant="destructive"
+                            className="rounded-sm text-[10px] px-1.5 py-0"
+                          >
+                            試合中
+                          </Badge>
+                        )}
+                        {isRefereeOnly && !isOngoing && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            審判担当
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {match.type === "league"
+                            ? groupName(match.groupId)
+                            : match.type === "custom-league" && match.customLeagueId
+                              ? (customLeagueMap.get(match.customLeagueId) ?? "カスタムリーグ")
+                              : "決勝トーナメント"}
+                        </Badge>
+                      </div>
                     </div>
                     <div className={isRefereeOnly ? "opacity-60" : ""}>
                       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
@@ -258,32 +278,18 @@ export function HomeContent({
                           refLabel={match.teamBRefLabel}
                         />
                       </div>
-                      {match.refereeTeamId && !isRefereeOnly && (
-                        <div className="mt-1 text-center text-xs text-muted-foreground">
-                          審判: {teamName(match.refereeTeamId)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <Badge variant="outline">
-                        {match.type === "league"
-                          ? `予選 ${groupName(match.groupId)}`
-                          : match.type === "custom-league" &&
-                              match.customLeagueId
-                            ? (customLeagueMap.get(match.customLeagueId) ??
-                              "カスタムリーグ")
-                            : "決勝トーナメント"}
-                      </Badge>
-                      {isOngoing ? (
-                        <Badge
-                          variant="destructive"
-                          className="rounded-sm text-[10px] px-1.5 py-0"
-                        >
-                          試合中
-                        </Badge>
-                      ) : getMatchState(match, now) === "upcoming" ? (
-                        <Countdown targetTime={match.scheduledTime} />
-                      ) : null}
+                      {(match.refereeTeamId || match.refereeTeamId2) &&
+                        !isRefereeOnly && (
+                          <div className="mt-1 text-center text-xs text-muted-foreground">
+                            審判:{" "}
+                            {match.refereeTeamId
+                              ? teamName(match.refereeTeamId)
+                              : ""}
+                            {match.refereeTeamId2
+                              ? ` / ${teamName(match.refereeTeamId2)}`
+                              : ""}
+                          </div>
+                        )}
                     </div>
                   </div>
                 </div>

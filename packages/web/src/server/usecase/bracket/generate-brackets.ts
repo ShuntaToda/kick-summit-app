@@ -88,6 +88,7 @@ export const createGenerateBrackets =
             court: defaultCourts.length > 0 ? defaultCourts[i % defaultCourts.length]! : "",
             status: "scheduled",
             refereeTeamId: null,
+            refereeTeamId2: null,
             customLeagueId: null,
             teamARefLabel: null,
             teamBRefLabel: null,

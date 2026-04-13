@@ -1,4 +1,4 @@
-import { DynamoDBClient, CreateTableCommand, DescribeTableCommand, DeleteTableCommand } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, CreateTableCommand, DeleteTableCommand } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { nanoid } from "nanoid";
 
@@ -28,15 +28,8 @@ const EVENT_ID = "aws-kick-summit";
 
 console.log(`ターゲット: ${isLocal ? "ローカル (localhost:8000)" : "AWS リモート"}\n`);
 
-async function recreateTable(name: string, keySchema: { hash: string; range?: string }, gsiList?: { name: string; hash: string; range?: string }[]) {
-  try {
-    await client.send(new DescribeTableCommand({ TableName: name }));
-    console.log(`  ${name}: 削除中...`);
-    await client.send(new DeleteTableCommand({ TableName: name }));
-  } catch {
-    // テーブルが存在しない
-  }
-
+async function recreateTableLocal(name: string, keySchema: { hash: string; range?: string }, gsiList?: { name: string; hash: string; range?: string }[]) {
+  try { await client.send(new DeleteTableCommand({ TableName: name })); } catch { /* 存在しない */ }
   const attrs = new Map<string, string>();
   attrs.set(keySchema.hash, "S");
   if (keySchema.range) attrs.set(keySchema.range, "S");
@@ -44,32 +37,26 @@ async function recreateTable(name: string, keySchema: { hash: string; range?: st
     attrs.set(gsi.hash, "S");
     if (gsi.range) attrs.set(gsi.range, "S");
   }
-
-  console.log(`  ${name}: 作成中...`);
-  await client.send(
-    new CreateTableCommand({
-      TableName: name,
-      AttributeDefinitions: [...attrs.entries()].map(([n, type]) => ({
-        AttributeName: n,
-        AttributeType: type,
+  await client.send(new CreateTableCommand({
+    TableName: name,
+    AttributeDefinitions: [...attrs.entries()].map(([n, t]) => ({ AttributeName: n, AttributeType: t })),
+    KeySchema: [
+      { AttributeName: keySchema.hash, KeyType: "HASH" },
+      ...(keySchema.range ? [{ AttributeName: keySchema.range, KeyType: "RANGE" as const }] : []),
+    ],
+    BillingMode: "PAY_PER_REQUEST",
+    ...(gsiList && gsiList.length > 0 && {
+      GlobalSecondaryIndexes: gsiList.map((gsi) => ({
+        IndexName: gsi.name,
+        KeySchema: [
+          { AttributeName: gsi.hash, KeyType: "HASH" as const },
+          ...(gsi.range ? [{ AttributeName: gsi.range, KeyType: "RANGE" as const }] : []),
+        ],
+        Projection: { ProjectionType: "ALL" as const },
       })),
-      KeySchema: [
-        { AttributeName: keySchema.hash, KeyType: "HASH" },
-        ...(keySchema.range ? [{ AttributeName: keySchema.range, KeyType: "RANGE" }] : []),
-      ],
-      BillingMode: "PAY_PER_REQUEST",
-      ...(gsiList && gsiList.length > 0 && {
-        GlobalSecondaryIndexes: gsiList.map((gsi) => ({
-          IndexName: gsi.name,
-          KeySchema: [
-            { AttributeName: gsi.hash, KeyType: "HASH" as const },
-            ...(gsi.range ? [{ AttributeName: gsi.range, KeyType: "RANGE" as const }] : []),
-          ],
-          Projection: { ProjectionType: "ALL" as const },
-        })),
-      }),
     }),
-  );
+  }));
+  console.log(`  ${name}: 再作成完了`);
 }
 
 function removeNulls(obj: Record<string, unknown>): Record<string, unknown> {
@@ -81,14 +68,16 @@ async function put(table: string, item: Record<string, unknown>) {
 }
 
 async function seed() {
-  console.log("\n=== テーブル再作成 ===");
-  await recreateTable(TABLES.events, { hash: "id" });
-  await recreateTable(TABLES.groups, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
-  await recreateTable(TABLES.teams, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }, { name: "groupId-index", hash: "groupId" }]);
-  await recreateTable(TABLES.matches, { hash: "id" }, [{ name: "schedule-index", hash: "eventId", range: "scheduledTime" }, { name: "group-index", hash: "groupId" }, { name: "custom-league-index", hash: "customLeagueId" }]);
-  await recreateTable(TABLES.brackets, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
-  await recreateTable(TABLES.courts, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
-  await recreateTable(TABLES.customLeagues, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
+  if (isLocal) {
+    console.log("=== テーブル再作成 (ローカル) ===");
+    await recreateTableLocal(TABLES.events, { hash: "id" });
+    await recreateTableLocal(TABLES.groups, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
+    await recreateTableLocal(TABLES.teams, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }, { name: "groupId-index", hash: "groupId" }]);
+    await recreateTableLocal(TABLES.matches, { hash: "id" }, [{ name: "schedule-index", hash: "eventId", range: "scheduledTime" }, { name: "group-index", hash: "groupId" }, { name: "custom-league-index", hash: "customLeagueId" }]);
+    await recreateTableLocal(TABLES.brackets, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
+    await recreateTableLocal(TABLES.courts, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
+    await recreateTableLocal(TABLES.customLeagues, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
+  }
 
   // チームカスタムフィールドID（本番と同じ値）
   const CF_PARTY = "aFCWlj5dsEinV1z2IfRrC";
@@ -198,6 +187,7 @@ async function seed() {
     { time: "13:25", aHome: AWS,  aAway: NTT,  aRef1: SONY, aRef2: CM,   bHome: SKY,  bAway: ISV,  bRef1: ZSC,  bRef2: ANTI, label: "予選14" },
     { time: "13:35", aHome: IRET, aAway: SWX,  aRef1: NTT,  aRef2: AWS,  bHome: ZSC,  bAway: ANTI, bRef1: WING, bRef2: OPEN, label: "予選15" },
   ];
+  // ※ 上記はスケジュール表と同一内容で確認済み
 
   for (const m of leagueMatchDefs) {
     const idA = nanoid();
@@ -207,16 +197,16 @@ async function seed() {
       teamAId: m.aHome, teamBId: m.aAway,
       scoreA: null, scoreB: null, halfScoreA: null, halfScoreB: null,
       scheduledTime: `${D}T${m.time}:00`,
-      durationMinutes: 10, court: "コートA", status: "scheduled",
-      refereeTeamId: m.aRef1, customLeagueId: null, teamARefLabel: null, teamBRefLabel: null,
+      durationMinutes: 7, court: "コートA", status: "scheduled",
+      refereeTeamId: m.aRef1, refereeTeamId2: m.aRef2, customLeagueId: null, teamARefLabel: null, teamBRefLabel: null,
     });
     await put(TABLES.matches, {
       id: idB, eventId: EVENT_ID, type: "league", groupId: GROUP_B,
       teamAId: m.bHome, teamBId: m.bAway,
       scoreA: null, scoreB: null, halfScoreA: null, halfScoreB: null,
       scheduledTime: `${D}T${m.time}:00`,
-      durationMinutes: 10, court: "コートB", status: "scheduled",
-      refereeTeamId: m.bRef1, customLeagueId: null, teamARefLabel: null, teamBRefLabel: null,
+      durationMinutes: 7, court: "コートB", status: "scheduled",
+      refereeTeamId: m.bRef1, refereeTeamId2: m.bRef2, customLeagueId: null, teamARefLabel: null, teamBRefLabel: null,
     });
     console.log(`  ${m.label}: コートA (${m.aHome.slice(0, 8)}...) / コートB (${m.bHome.slice(0, 8)}...)`);
   }
@@ -227,21 +217,24 @@ async function seed() {
   await put(TABLES.customLeagues, { id: CL_ID, eventId: EVENT_ID, name: "順位決定戦" });
 
   const GRP_RANK = (groupId: string, rank: number) => `group-rank:${groupId}:${rank}`;
+  // スケジュール表通りの審判 (group-rank 参照)
+  // 11位決定戦: A4位/B4位, 9位決定戦: A3位/B3位
+  // 7位決定戦: A1位/B1位, 5位決定戦: A5位/B5位
+  // 決勝戦: A6位/B6位, 3位決定戦: A5位/B5位
   type RankMatchDef = {
     time: string; court: string;
-    aRef: string; aRank: number;
-    bRef: string; bRank: number;
-    ref1GroupId: string; ref1Rank: number;
-    ref2GroupId: string; ref2Rank: number;
+    aRank: number; bRank: number;
+    ref1Rank: number; ref1Group: string;
+    ref2Rank: number; ref2Group: string;
     label: string;
   };
   const rankMatchDefs: RankMatchDef[] = [
-    { time: "13:50", court: "コートA", aRef: GROUP_A, aRank: 6, bRef: GROUP_B, bRank: 6, ref1GroupId: GROUP_A, ref1Rank: 4, ref2GroupId: GROUP_B, ref2Rank: 4, label: "11位決定戦" },
-    { time: "13:50", court: "コートB", aRef: GROUP_A, aRank: 5, bRef: GROUP_B, bRank: 5, ref1GroupId: GROUP_A, ref1Rank: 3, ref2GroupId: GROUP_B, ref2Rank: 3, label: "9位決定戦" },
-    { time: "14:00", court: "コートA", aRef: GROUP_A, aRank: 4, bRef: GROUP_B, bRank: 4, ref1GroupId: GROUP_A, ref1Rank: 1, ref2GroupId: GROUP_B, ref2Rank: 1, label: "7位決定戦" },
-    { time: "14:00", court: "コートB", aRef: GROUP_A, aRank: 3, bRef: GROUP_B, bRank: 3, ref1GroupId: GROUP_A, ref1Rank: 5, ref2GroupId: GROUP_B, ref2Rank: 5, label: "5位決定戦" },
-    { time: "14:10", court: "コートA", aRef: GROUP_A, aRank: 1, bRef: GROUP_B, bRank: 1, ref1GroupId: GROUP_A, ref1Rank: 6, ref2GroupId: GROUP_B, ref2Rank: 6, label: "決勝戦" },
-    { time: "14:10", court: "コートB", aRef: GROUP_A, aRank: 2, bRef: GROUP_B, bRank: 2, ref1GroupId: GROUP_A, ref1Rank: 5, ref2GroupId: GROUP_B, ref2Rank: 5, label: "3位決定戦" },
+    { time: "13:50", court: "コートA", aRank: 6, bRank: 6, ref1Rank: 4, ref1Group: GROUP_A, ref2Rank: 4, ref2Group: GROUP_B, label: "11位決定戦" },
+    { time: "13:50", court: "コートB", aRank: 5, bRank: 5, ref1Rank: 3, ref1Group: GROUP_A, ref2Rank: 3, ref2Group: GROUP_B, label: "9位決定戦" },
+    { time: "14:00", court: "コートA", aRank: 4, bRank: 4, ref1Rank: 1, ref1Group: GROUP_A, ref2Rank: 1, ref2Group: GROUP_B, label: "7位決定戦" },
+    { time: "14:00", court: "コートB", aRank: 3, bRank: 3, ref1Rank: 5, ref1Group: GROUP_A, ref2Rank: 5, ref2Group: GROUP_B, label: "5位決定戦" },
+    { time: "14:10", court: "コートA", aRank: 1, bRank: 1, ref1Rank: 6, ref1Group: GROUP_A, ref2Rank: 6, ref2Group: GROUP_B, label: "決勝戦" },
+    { time: "14:10", court: "コートB", aRank: 2, bRank: 2, ref1Rank: 5, ref1Group: GROUP_A, ref2Rank: 5, ref2Group: GROUP_B, label: "3位決定戦" },
   ];
 
   for (const m of rankMatchDefs) {
@@ -249,14 +242,14 @@ async function seed() {
       id: nanoid(), eventId: EVENT_ID, type: "custom-league",
       groupId: null, customLeagueId: CL_ID,
       teamAId: null, teamBId: null,
-      teamARefLabel: GRP_RANK(m.aRef, m.aRank),
-      teamBRefLabel: GRP_RANK(m.bRef, m.bRank),
+      teamARefLabel: GRP_RANK(GROUP_A, m.aRank),
+      teamBRefLabel: GRP_RANK(GROUP_B, m.bRank),
       scoreA: null, scoreB: null, halfScoreA: null, halfScoreB: null,
       scheduledTime: `${D}T${m.time}:00`,
-      durationMinutes: 10, court: m.court, status: "scheduled",
-      refereeTeamId: null,
+      durationMinutes: 7, court: m.court, status: "scheduled",
+      refereeTeamId: null, refereeTeamId2: null,
     });
-    console.log(`  ${m.label}: ${m.court} グループA${m.aRank}位 vs グループB${m.bRank}位`);
+    console.log(`  ${m.label}: ${m.court} A${m.aRank}位 vs B${m.bRank}位 (審判: A${m.ref1Rank}位/B${m.ref2Rank}位)`);
   }
 
   console.log("\n✓ シード完了");

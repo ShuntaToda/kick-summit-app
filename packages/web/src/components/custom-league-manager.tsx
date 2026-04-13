@@ -44,6 +44,7 @@ type MatchForm = {
   durationMinutes: number;
   court: string;
   refereeTeamId: string;
+  refereeTeamId2: string;
 };
 
 const NONE = "__none__";
@@ -87,6 +88,7 @@ function emptyMatchForm(): MatchForm {
     durationMinutes: 10,
     court: "",
     refereeTeamId: "",
+    refereeTeamId2: "",
   };
 }
 
@@ -307,6 +309,7 @@ function LeagueMatchList({
       durationMinutes: form.durationMinutes,
       court: form.court,
       refereeTeamId: form.refereeTeamId || null,
+      refereeTeamId2: form.refereeTeamId2 || null,
     });
   }
 
@@ -321,6 +324,7 @@ function LeagueMatchList({
       durationMinutes: match.durationMinutes,
       court: match.court,
       refereeTeamId: match.refereeTeamId ?? "",
+      refereeTeamId2: match.refereeTeamId2 ?? "",
     });
   }
 
@@ -359,9 +363,10 @@ function LeagueMatchList({
                   <div className="font-medium">{teamLabel(match.teamAId, match.teamARefLabel)}</div>
                   <div className="text-xs text-muted-foreground">vs</div>
                   <div className="font-medium">{teamLabel(match.teamBId, match.teamBRefLabel)}</div>
-                  {match.refereeTeamId && (
+                  {(match.refereeTeamId || match.refereeTeamId2) && (
                     <div className="mt-0.5 text-xs text-muted-foreground">
-                      審判: {teamMap.get(match.refereeTeamId)?.name ?? match.refereeTeamId}
+                      審判: {match.refereeTeamId ? (teamMap.get(match.refereeTeamId)?.name ?? match.refereeTeamId) : ""}
+                      {match.refereeTeamId2 ? ` / ${teamMap.get(match.refereeTeamId2)?.name ?? match.refereeTeamId2}` : ""}
                     </div>
                   )}
                 </div>
@@ -747,10 +752,29 @@ function CustomLeagueMatchForm({
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">審判</Label>
+            <Label className="text-xs">正審</Label>
             <Select
               value={form.refereeTeamId || NONE}
               onValueChange={(v) => onChange({ ...form, refereeTeamId: v === NONE ? "" : v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>なし</SelectItem>
+                {teams.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">副審</Label>
+            <Select
+              value={form.refereeTeamId2 || NONE}
+              onValueChange={(v) => onChange({ ...form, refereeTeamId2: v === NONE ? "" : v })}
             >
               <SelectTrigger>
                 <SelectValue />

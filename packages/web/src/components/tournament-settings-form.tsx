@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Plus, Trash2 } from "lucide-react";
-import type { Event, CustomField } from "@/server/domain/entities/event";
+import type { Event, CustomField, ContentSection } from "@/server/domain/entities/event";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
@@ -51,6 +51,7 @@ function buildFormData(
     customFields: JSON.stringify(overrides.customFields ?? event.customFields),
     eventFields: JSON.stringify(overrides.eventFields ?? event.eventFields),
     eventValues: JSON.stringify(overrides.eventValues ?? event.eventValues),
+    contentSections: JSON.stringify(event.contentSections),
   };
 }
 
@@ -152,6 +153,20 @@ export function TournamentSettingsForm({ event, eventId }: Props) {
   const [description, setDescription] = useState(event.description);
   const [descState, descAction] = useActionState(updateEventFormAction, init);
 
+  // カスタム文章セクション
+  const [contentSections, setContentSections] = useState<ContentSection[]>(event.contentSections);
+  const [sectionsState, sectionsAction] = useActionState(updateEventFormAction, init);
+
+  function addSection() {
+    setContentSections([...contentSections, { id: nanoid(), title: "", body: "" }]);
+  }
+  function updateSection(id: string, patch: Partial<ContentSection>) {
+    setContentSections(contentSections.map((s) => s.id === id ? { ...s, ...patch } : s));
+  }
+  function removeSection(id: string) {
+    setContentSections(contentSections.filter((s) => s.id !== id));
+  }
+
   // 保存成功時に state を event に反映（各セクション独立）
   useEffect(() => {
     if (eventFieldState.success) {
@@ -219,6 +234,7 @@ export function TournamentSettingsForm({ event, eventId }: Props) {
         <input type="hidden" name="customFields" value={JSON.stringify(event.customFields)} />
         <input type="hidden" name="eventFields" value={JSON.stringify(eventFields)} />
         <input type="hidden" name="eventValues" value={JSON.stringify(eventValues)} />
+        <input type="hidden" name="contentSections" value={JSON.stringify(event.contentSections)} />
         <Card>
           <CardHeader>
             <CardTitle className="text-base">大会カスタム項目</CardTitle>
@@ -249,6 +265,7 @@ export function TournamentSettingsForm({ event, eventId }: Props) {
         <input type="hidden" name="customFields" value={JSON.stringify(customFields)} />
         <input type="hidden" name="eventFields" value={JSON.stringify(event.eventFields)} />
         <input type="hidden" name="eventValues" value={JSON.stringify(event.eventValues)} />
+        <input type="hidden" name="contentSections" value={JSON.stringify(event.contentSections)} />
         <Card>
           <CardHeader>
             <CardTitle className="text-base">チームカスタム項目</CardTitle>
@@ -277,6 +294,7 @@ export function TournamentSettingsForm({ event, eventId }: Props) {
         <input type="hidden" name="customFields" value={JSON.stringify(event.customFields)} />
         <input type="hidden" name="eventFields" value={JSON.stringify(event.eventFields)} />
         <input type="hidden" name="eventValues" value={JSON.stringify(event.eventValues)} />
+        <input type="hidden" name="contentSections" value={JSON.stringify(event.contentSections)} />
         <Card>
           <CardContent className="space-y-3 pt-6">
             <Label>大会説明 (Markdown)</Label>
@@ -289,6 +307,62 @@ export function TournamentSettingsForm({ event, eventId }: Props) {
               />
             </div>
             <SectionSaveButton state={descState} />
+          </CardContent>
+        </Card>
+      </form>
+
+      {/* カスタム文章セクション */}
+      <form action={sectionsAction}>
+        <input type="hidden" name="eventId" value={eventId} />
+        <input type="hidden" name="name" value={event.name} />
+        <input type="hidden" name="date" value={event.date} />
+        <input type="hidden" name="description" value={event.description} />
+        <input type="hidden" name="customFields" value={JSON.stringify(event.customFields)} />
+        <input type="hidden" name="eventFields" value={JSON.stringify(event.eventFields)} />
+        <input type="hidden" name="eventValues" value={JSON.stringify(event.eventValues)} />
+        <input type="hidden" name="contentSections" value={JSON.stringify(contentSections)} />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">カスタム文章セクション</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              大会ページに表示する自由記述セクションを追加できます（例: ルール、アクセス方法など）。
+            </p>
+            {contentSections.map((section) => (
+              <div key={section.id} className="space-y-2 rounded-md border p-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">セクション名</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeSection(section.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+                <Input
+                  value={section.title}
+                  onChange={(e) => updateSection(section.id, { title: e.target.value })}
+                  placeholder="例: ルール"
+                />
+                <Label className="text-xs">本文 (Markdown)</Label>
+                <div data-color-mode="light">
+                  <MDEditor
+                    value={section.body}
+                    onChange={(v) => updateSection(section.id, { body: v ?? "" })}
+                    height={200}
+                    preview="edit"
+                  />
+                </div>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={addSection}>
+              <Plus className="mr-1 h-4 w-4" />
+              セクションを追加
+            </Button>
+            <SectionSaveButton state={sectionsState} />
           </CardContent>
         </Card>
       </form>

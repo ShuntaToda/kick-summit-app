@@ -32,6 +32,19 @@ async function EventOverview({ eventId }: { eventId: string }) {
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
       )}
+      {event.contentSections?.map((section) => (
+        <Link
+          key={section.id}
+          href={`/event-description${idSuffix}${idSuffix ? "&" : "?"}section=${encodeURIComponent(section.id)}`}
+          className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
+        >
+          <div className="flex items-center gap-3">
+            <FileText className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium">{section.title}</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+      ))}
     </>
   );
 }

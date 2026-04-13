@@ -13,6 +13,7 @@ type SaveMatchInput = {
   court: string;
   status: MatchStatus;
   refereeTeamId?: string | null;
+  refereeTeamId2?: string | null;
   customLeagueId?: string | null;
   teamARefLabel?: string | null;
   teamBRefLabel?: string | null;
@@ -39,6 +40,7 @@ export const createSaveMatch =
       court: input.court,
       status: input.status,
       refereeTeamId: input.refereeTeamId ?? existing?.refereeTeamId ?? null,
+      refereeTeamId2: input.refereeTeamId2 ?? existing?.refereeTeamId2 ?? null,
       customLeagueId: input.customLeagueId ?? existing?.customLeagueId ?? null,
       teamARefLabel: input.teamARefLabel ?? existing?.teamARefLabel ?? null,
       teamBRefLabel: input.teamBRefLabel ?? existing?.teamBRefLabel ?? null,

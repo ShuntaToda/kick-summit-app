@@ -231,7 +231,7 @@ async function seed() {
       teamAId: m.aHome, teamBId: m.aAway,
       scoreA: null, scoreB: null, halfScoreA: null, halfScoreB: null,
       scheduledTime: `${D}T${m.time}:00`,
-      durationMinutes: 10, court: "コートA", status: "scheduled",
+      durationMinutes: 7, court: "コートA", status: "scheduled",
       refereeTeamId: m.aRef1, customLeagueId: null, teamARefLabel: null, teamBRefLabel: null,
     });
     await put(t("matches"), {
@@ -239,7 +239,7 @@ async function seed() {
       teamAId: m.bHome, teamBId: m.bAway,
       scoreA: null, scoreB: null, halfScoreA: null, halfScoreB: null,
       scheduledTime: `${D}T${m.time}:00`,
-      durationMinutes: 10, court: "コートB", status: "scheduled",
+      durationMinutes: 7, court: "コートB", status: "scheduled",
       refereeTeamId: m.bRef1, customLeagueId: null, teamARefLabel: null, teamBRefLabel: null,
     });
     console.log(`  ${m.label}`);
@@ -270,7 +270,7 @@ async function seed() {
       teamBRefLabel: GRP_RANK(m.bGrp, m.bRank),
       scoreA: null, scoreB: null, halfScoreA: null, halfScoreB: null,
       scheduledTime: `${D}T${m.time}:00`,
-      durationMinutes: 10, court: m.court, status: "scheduled",
+      durationMinutes: 7, court: m.court, status: "scheduled",
       refereeTeamId: null,
     });
     console.log(`  ${m.label}: グループA${m.aRank}位 vs グループB${m.bRank}位`);

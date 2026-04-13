@@ -31,6 +31,10 @@ const saveMatchPayload = z.object({
     .string()
     .nullish()
     .transform((v) => v ?? null),
+  refereeTeamId2: z
+    .string()
+    .nullish()
+    .transform((v) => v ?? null),
   customLeagueId: z
     .string()
     .nullish()

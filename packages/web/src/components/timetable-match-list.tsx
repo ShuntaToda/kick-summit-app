@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useAdmin } from "@/hooks/use-admin";
 import { submitScore, changeMatchStatusAction } from "@/lib/actions/match";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -196,9 +194,10 @@ function MatchRow({
                 groupMap={groupMap}
               />
             </div>
-            {match.refereeTeamId && (
+            {(match.refereeTeamId || match.refereeTeamId2) && (
               <div className="pt-1 text-center text-[10px] text-muted-foreground">
-                審判: {teamMap[match.refereeTeamId]?.name ?? "TBD"}
+                審判: {match.refereeTeamId ? (teamMap[match.refereeTeamId]?.name ?? "TBD") : ""}
+                {match.refereeTeamId2 ? ` / ${teamMap[match.refereeTeamId2]?.name ?? "TBD"}` : ""}
               </div>
             )}
             {onTap && (
@@ -231,8 +230,6 @@ function ScoreDialog({
   const [scoreA, setScoreA] = useState(String(match.scoreA ?? 0));
   const [scoreB, setScoreB] = useState(String(match.scoreB ?? 0));
   const [finished, setFinished] = useState(match.status === "finished");
-  const [showTieAlert, setShowTieAlert] = useState(false);
-
   const teamAName = match.teamAId
     ? (teamMap[match.teamAId]?.name ?? "TBD")
     : "TBD";
@@ -240,109 +237,71 @@ function ScoreDialog({
     ? (teamMap[match.teamBId]?.name ?? "TBD")
     : "TBD";
 
-  const customLeaguePath = eventId && eventId !== "default"
-    ? `/admin/custom-league?id=${eventId}`
-    : "/admin/custom-league";
-
   function handleSubmit() {
     startTransition(async () => {
       const newStatus = finished ? "finished" : "scheduled";
-      const scoreResult = await submitScore(match.id, Number(scoreA) || 0, Number(scoreB) || 0, null, null, eventId);
-      let hasTie = scoreResult.hasTie;
+      await submitScore(match.id, Number(scoreA) || 0, Number(scoreB) || 0, null, null, eventId);
       if (newStatus !== match.status) {
         const fd = new FormData();
         fd.append("matchId", match.id);
         fd.append("status", newStatus);
         if (eventId) fd.append("eventId", eventId);
-        const statusResult = await changeMatchStatusAction(fd);
-        hasTie = hasTie || statusResult.hasTie;
+        await changeMatchStatusAction(fd);
       }
       router.refresh();
-      if (hasTie) {
-        setShowTieAlert(true);
-      } else {
-        onClose();
-      }
+      onClose();
     });
   }
 
   return (
-    <>
-      <Dialog open={open && !showTieAlert} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>スコア入力</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-              <div className="space-y-1">
-                <p className="text-center text-xs text-muted-foreground">{teamAName}</p>
-                <Input
-                  type="number"
-                  min={0}
-                  value={scoreA}
-                  onChange={(e) => setScoreA(e.target.value)}
-                  className="text-center text-lg font-bold"
-                />
-              </div>
-              <span className="pb-2 text-lg font-bold text-muted-foreground">-</span>
-              <div className="space-y-1">
-                <p className="text-center text-xs text-muted-foreground">{teamBName}</p>
-                <Input
-                  type="number"
-                  min={0}
-                  value={scoreB}
-                  onChange={(e) => setScoreB(e.target.value)}
-                  className="text-center text-lg font-bold"
-                />
-              </div>
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>スコア入力</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+            <div className="space-y-1">
+              <p className="text-center text-xs text-muted-foreground">{teamAName}</p>
+              <Input
+                type="number"
+                min={0}
+                value={scoreA}
+                onChange={(e) => setScoreA(e.target.value)}
+                className="text-center text-lg font-bold"
+              />
             </div>
-            <div className="flex items-center gap-2">
-              <Switch id="finished" checked={finished} onCheckedChange={setFinished} />
-              <Label htmlFor="finished" className="text-sm">試合完了</Label>
-            </div>
-            <div className="flex gap-2">
-              <Button className="flex-1" onClick={handleSubmit} disabled={isPending}>
-                {isPending ? "送信中..." : "確定"}
-              </Button>
-              <Button variant="outline" onClick={onClose}>
-                キャンセル
-              </Button>
+            <span className="pb-2 text-lg font-bold text-muted-foreground">-</span>
+            <div className="space-y-1">
+              <p className="text-center text-xs text-muted-foreground">{teamBName}</p>
+              <Input
+                type="number"
+                min={0}
+                value={scoreB}
+                onChange={(e) => setScoreB(e.target.value)}
+                className="text-center text-lg font-bold"
+              />
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* 同率発生時の注意モーダル */}
-      <Dialog open={showTieAlert} onOpenChange={(v) => { if (!v) { setShowTieAlert(false); onClose(); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>同率が発生しています</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              グループの順位に同率があるため、カスタムリーグの一部の対戦相手が未確定のままです。
-              じゃんけん等で順位を決定し、カスタムリーグ管理ページで設定してください。
-            </p>
-            <div className="flex gap-2">
-              <Button className="flex-1" asChild>
-                <Link href={customLeaguePath} onClick={() => { setShowTieAlert(false); onClose(); }}>
-                  カスタムリーグ管理へ
-                </Link>
-              </Button>
-              <Button variant="outline" onClick={() => { setShowTieAlert(false); onClose(); }}>
-                閉じる
-              </Button>
-            </div>
+          <div className="flex items-center gap-2">
+            <Switch id="finished" checked={finished} onCheckedChange={setFinished} />
+            <Label htmlFor="finished" className="text-sm">試合完了</Label>
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={handleSubmit} disabled={isPending}>
+              {isPending ? "送信中..." : "確定"}
+            </Button>
+            <Button variant="outline" onClick={onClose}>
+              キャンセル
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 export function TimetableMatchList({ matches, teamMap, groupMap = {}, eventId }: Props) {
-  const { isAdmin } = useAdmin();
   const [now, setNow] = useState(getNow());
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const scrollTargetRef = useRef<HTMLDivElement>(null);
@@ -383,7 +342,7 @@ export function TimetableMatchList({ matches, teamMap, groupMap = {}, eventId }:
             teamMap={teamMap}
             groupMap={groupMap}
             now={now}
-            onTap={isAdmin ? () => setEditingMatch(m) : undefined}
+            onTap={() => setEditingMatch(m)}
           />
         </div>
       ))}

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import * as container from "@/server/container";
-import { customFieldSchema } from "@/server/domain/entities/event";
+import { customFieldSchema, contentSectionSchema } from "@/server/domain/entities/event";
 import { type ActionState, ts, str, json } from "./helpers";
 
 const updateEventInput = z.object({
@@ -14,6 +14,7 @@ const updateEventInput = z.object({
   customFields: z.array(customFieldSchema).default([]),
   eventFields: z.array(customFieldSchema).default([]),
   eventValues: z.record(z.string(), z.union([z.string(), z.number()])).default({}),
+  contentSections: z.array(contentSectionSchema).default([]),
 });
 
 export async function updateEventFormAction(
@@ -29,6 +30,7 @@ export async function updateEventFormAction(
       customFields: json(formData, "customFields"),
       eventFields: json(formData, "eventFields"),
       eventValues: json(formData, "eventValues"),
+      contentSections: json(formData, "contentSections"),
     });
     await container.updateEvent(eventId)(input);
     revalidatePath("/admin/settings");

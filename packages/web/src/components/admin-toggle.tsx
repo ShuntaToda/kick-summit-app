@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Lock, PenLine, ChevronRight, LogOut, Settings, Users, Layers, Calendar, MapPin, Trophy, Calculator } from "lucide-react";
+import { Lock, ChevronRight, LogOut, Settings, Users, Layers, Calendar, MapPin, Trophy, Calculator } from "lucide-react";
 import { useAdmin } from "@/hooks/use-admin";
 import { Button } from "@/components/ui/button";
 import {
@@ -97,16 +97,7 @@ export function AdminToggle({ eventId }: { eventId: string }) {
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
-        <Link
-          href={`/admin/score${idSuffix}`}
-          className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
-        >
-          <div className="flex items-center gap-3">
-            <PenLine className="h-5 w-5 text-primary" />
-            <span className="text-sm font-medium">スコア入力</span>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </Link>
+
         <Link
           href={`/accounting${idSuffix}`}
           className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"

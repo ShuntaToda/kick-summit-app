@@ -13,6 +13,14 @@ export type CustomField = z.infer<typeof customFieldSchema>;
 export const eventCustomFieldSchema = customFieldSchema;
 export type EventCustomField = CustomField;
 
+export const contentSectionSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  body: z.string().default(""),
+});
+
+export type ContentSection = z.infer<typeof contentSectionSchema>;
+
 export const eventSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -22,6 +30,7 @@ export const eventSchema = z.object({
   customFields: z.array(customFieldSchema).default([]),
   eventFields: z.array(customFieldSchema).default([]),
   eventValues: z.record(z.string(), z.union([z.string(), z.number()])).default({}),
+  contentSections: z.array(contentSectionSchema).default([]),
 });
 
 export type Event = z.infer<typeof eventSchema>;
