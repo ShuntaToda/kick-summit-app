@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import * as container from "@/server/container";
 import { teamRefSchema } from "@/server/domain/entities/bracket";
-import { type ActionState, ts, str, json } from "./helpers";
+import { type ActionState, ts, str, json, toErrorMessage } from "./helpers";
 
 const saveBracketPayload = z.object({
   id: z.string().min(1).optional(),
@@ -49,7 +49,7 @@ export async function saveBracketFormAction(
     revalidatePath("/admin/brackets");
     return { success: true, timestamp: ts() };
   } catch (e) {
-    return { success: false, error: String(e), timestamp: ts() };
+    return { success: false, error: toErrorMessage(e), timestamp: ts() };
   }
 }
 
@@ -66,7 +66,7 @@ export async function deleteBracketFormAction(
     revalidatePath("/admin/brackets");
     return { success: true, timestamp: ts() };
   } catch (e) {
-    return { success: false, error: String(e), timestamp: ts() };
+    return { success: false, error: toErrorMessage(e), timestamp: ts() };
   }
 }
 
@@ -80,7 +80,7 @@ export async function deleteAllBracketsFormAction(
     revalidatePath("/admin/brackets");
     return { success: true, timestamp: ts() };
   } catch (e) {
-    return { success: false, error: String(e), timestamp: ts() };
+    return { success: false, error: toErrorMessage(e), timestamp: ts() };
   }
 }
 
@@ -95,7 +95,7 @@ export async function addBracketSlotFormAction(
     revalidatePath("/admin/brackets");
     return { success: true, timestamp: ts() };
   } catch (e) {
-    return { success: false, error: String(e), timestamp: ts() };
+    return { success: false, error: toErrorMessage(e), timestamp: ts() };
   }
 }
 
@@ -110,7 +110,7 @@ export async function generateBracketsFormAction(
     revalidatePath("/admin/brackets");
     return { success: true, timestamp: ts() };
   } catch (e) {
-    return { success: false, error: String(e), timestamp: ts() };
+    return { success: false, error: toErrorMessage(e), timestamp: ts() };
   }
 }
 

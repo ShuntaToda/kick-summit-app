@@ -7,7 +7,7 @@ import {
   matchStatusSchema,
   matchTypeSchema,
 } from "@/server/domain/entities/match";
-import { type ActionState, ts, str, json } from "./helpers";
+import { type ActionState, ts, str, json, toErrorMessage } from "./helpers";
 
 const saveMatchPayload = z.object({
   id: z.string().min(1).optional(),
@@ -75,7 +75,7 @@ export async function saveMatchFormAction(
     revalidatePath("/admin/custom-league");
     return { success: true, timestamp: ts() };
   } catch (e) {
-    return { success: false, error: String(e), timestamp: ts() };
+    return { success: false, error: toErrorMessage(e), timestamp: ts() };
   }
 }
 
@@ -90,7 +90,7 @@ export async function deleteMatchFormAction(
     revalidatePath("/admin/custom-league");
     return { success: true, timestamp: ts() };
   } catch (e) {
-    return { success: false, error: String(e), timestamp: ts() };
+    return { success: false, error: toErrorMessage(e), timestamp: ts() };
   }
 }
 
@@ -98,7 +98,6 @@ export async function changeMatchStatusFormAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  console.log("更新しました");
   try {
     const { matchId, status } = changeMatchStatusInput.parse({
       matchId: str(formData, "matchId"),
@@ -112,7 +111,7 @@ export async function changeMatchStatusFormAction(
     revalidatePath("/", "layout");
     return { success: true, timestamp: ts() };
   } catch (e) {
-    return { success: false, error: String(e), timestamp: ts() };
+    return { success: false, error: toErrorMessage(e), timestamp: ts() };
   }
 }
 
@@ -179,6 +178,6 @@ export async function saveScheduleFormAction(
     revalidatePath("/admin/matches");
     return { success: true, timestamp: ts() };
   } catch (e) {
-    return { success: false, error: String(e), timestamp: ts() };
+    return { success: false, error: toErrorMessage(e), timestamp: ts() };
   }
 }

@@ -4,8 +4,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import * as container from "@/server/container";
-import { TeamManager } from "@/components/team-manager";
-import { CardSkeleton } from "@/components/section-skeleton";
+import { TeamManager } from "@/components/features/team/team-manager";
+import { CardSkeleton } from "@/components/shared/section-skeleton";
 
 type PageProps = { searchParams: Promise<{ id?: string }> };
 

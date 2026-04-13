@@ -2,9 +2,9 @@ export const dynamic = "force-dynamic";
 
 import { Suspense } from "react";
 import * as container from "@/server/container";
-import { ScoreInputContent } from "@/components/score-input-content";
-import { Refresher } from "@/components/refresher";
-import { CardSkeleton } from "@/components/section-skeleton";
+import { ScoreInputContent } from "@/components/features/score/score-input-content";
+import { Refresher } from "@/components/shared/refresher";
+import { CardSkeleton } from "@/components/shared/section-skeleton";
 
 type PageProps = { searchParams: Promise<{ id?: string }> };
 

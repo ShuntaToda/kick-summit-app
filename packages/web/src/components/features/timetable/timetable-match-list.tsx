@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import type { Match } from "@/server/domain/entities/match";
 import { getNow } from "@/lib/now";
+import { decodeRefLabel } from "@/components/utils/ref-label";
 
 type TeamInfo = {
   name: string;
@@ -31,22 +32,7 @@ type Props = {
   eventId?: string;
 };
 
-const GROUP_RANK_PREFIX = "group-rank:";
 
-function decodeRefLabel(
-  refLabel: string,
-  groupMap: Record<string, string>,
-): string {
-  if (!refLabel.startsWith(GROUP_RANK_PREFIX)) return refLabel;
-  const rest = refLabel.slice(GROUP_RANK_PREFIX.length);
-  const lastColon = rest.lastIndexOf(":");
-  if (lastColon === -1) return refLabel;
-  const groupId = rest.slice(0, lastColon);
-  const rank = Number(rest.slice(lastColon + 1));
-  if (!groupId || isNaN(rank)) return refLabel;
-  const groupName = groupMap[groupId] ?? groupId;
-  return `${groupName} ${rank}位`;
-}
 
 function getMatchState(match: Match, now: number) {
   if (!match.scheduledTime) return "upcoming";

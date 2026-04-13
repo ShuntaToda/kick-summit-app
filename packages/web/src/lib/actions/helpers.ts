@@ -4,6 +4,10 @@ export function ts(): number {
   return Date.now();
 }
 
+export function toErrorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
 export function str(fd: FormData, key: string): string {
   return (fd.get(key) as string) ?? "";
 }

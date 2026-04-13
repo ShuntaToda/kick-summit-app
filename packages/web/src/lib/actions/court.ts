@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import * as container from "@/server/container";
-import { type ActionState, ts, str, strOrNull } from "./helpers";
+import { type ActionState, ts, str, strOrNull, toErrorMessage } from "./helpers";
 
 const saveCourtInput = z.object({
   eventId: z.string().min(1),
@@ -29,7 +29,7 @@ export async function saveCourtFormAction(
     revalidatePath("/admin/settings");
     return { success: true, timestamp: ts() };
   } catch (e) {
-    return { success: false, error: String(e), timestamp: ts() };
+    return { success: false, error: toErrorMessage(e), timestamp: ts() };
   }
 }
 
@@ -43,7 +43,7 @@ export async function deleteCourtFormAction(
     revalidatePath("/admin/settings");
     return { success: true, timestamp: ts() };
   } catch (e) {
-    return { success: false, error: String(e), timestamp: ts() };
+    return { success: false, error: toErrorMessage(e), timestamp: ts() };
   }
 }
 

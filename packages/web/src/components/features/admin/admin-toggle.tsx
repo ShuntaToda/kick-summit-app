@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { eventIdSuffix } from "@/components/utils/event-url";
 
 export function AdminToggle({ eventId }: { eventId: string }) {
   const { isAdmin, login, logout } = useAdmin();
@@ -20,7 +21,7 @@ export function AdminToggle({ eventId }: { eventId: string }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
 
-  const idSuffix = eventId !== "default" ? `?id=${encodeURIComponent(eventId)}` : "";
+  const idSuffix = eventIdSuffix(eventId);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

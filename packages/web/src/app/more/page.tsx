@@ -2,16 +2,17 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronRight, FileText } from "lucide-react";
 import * as container from "@/server/container";
-import { AdminToggle } from "@/components/admin-toggle";
-import { TeamSettingsLink } from "@/components/team-settings-link";
+import { AdminToggle } from "@/components/features/admin/admin-toggle";
+import { TeamSettingsLink } from "@/components/features/team/team-settings-link";
 import { Card, CardContent } from "@/components/ui/card";
+import { buildEventUrl, eventIdSuffix } from "@/components/utils/event-url";
 
 type PageProps = { searchParams: Promise<{ id?: string }> };
 
 async function EventOverview({ eventId }: { eventId: string }) {
   const event = await container.getEvent(eventId);
   if (!event) return null;
-  const idSuffix = eventId !== "default" ? `?id=${encodeURIComponent(eventId)}` : "";
+  const idSuffix = eventIdSuffix(eventId);
   return (
     <>
       <Card>
@@ -22,7 +23,7 @@ async function EventOverview({ eventId }: { eventId: string }) {
       </Card>
       {event.description && (
         <Link
-          href={`/event-description${idSuffix}`}
+          href={buildEventUrl("/event-description", eventId)}
           className="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
         >
           <div className="flex items-center gap-3">

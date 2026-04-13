@@ -4,8 +4,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import * as container from "@/server/container";
-import { TournamentSettingsForm } from "@/components/tournament-settings-form";
-import { FormSkeleton } from "@/components/section-skeleton";
+import { TournamentSettingsForm } from "@/components/features/event/tournament-settings-form";
+import { FormSkeleton } from "@/components/shared/section-skeleton";
 
 type PageProps = { searchParams: Promise<{ id?: string }> };
 

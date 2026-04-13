@@ -15,8 +15,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { TeamHeader } from "@/components/team-header";
-import { LeagueCrossTable } from "@/components/league-cross-table";
+import { TeamHeader } from "@/components/features/team/team-header";
+import { LeagueCrossTable } from "@/components/features/league/league-cross-table";
+import { decodeRefLabel } from "@/components/utils/ref-label";
 import type { Team } from "@/server/domain/entities/team";
 import type { Match } from "@/server/domain/entities/match";
 import type { Group } from "@/server/domain/entities/group";
@@ -122,18 +123,6 @@ export function HomeContent({
     return teamMap.get(id)?.color ?? "#888";
   }
 
-  function decodeRefLabel(refLabel: string): string {
-    const GROUP_RANK_PREFIX = "group-rank:";
-    if (!refLabel.startsWith(GROUP_RANK_PREFIX)) return refLabel;
-    const rest = refLabel.slice(GROUP_RANK_PREFIX.length);
-    const lastColon = rest.lastIndexOf(":");
-    if (lastColon === -1) return refLabel;
-    const gid = rest.slice(0, lastColon);
-    const rank = Number(rest.slice(lastColon + 1));
-    if (!gid || isNaN(rank)) return refLabel;
-    const name = groupNameMap.get(gid) ?? gid;
-    return `${name} ${rank}位`;
-  }
 
   function TeamLabel({
     id,
@@ -147,7 +136,7 @@ export function HomeContent({
       return (
         <div className="text-center">
           <span className="text-xs text-muted-foreground italic">
-            {decodeRefLabel(refLabel)}
+            {decodeRefLabel(refLabel, groupNameMap)}
           </span>
           {info && (
             <div>

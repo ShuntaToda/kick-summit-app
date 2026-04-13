@@ -4,9 +4,9 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import * as container from "@/server/container";
-import { ScheduleGenerator } from "@/components/schedule-generator";
-import { MatchManager } from "@/components/match-manager";
-import { FormSkeleton, CardSkeleton } from "@/components/section-skeleton";
+import { ScheduleGenerator } from "@/components/features/admin/schedule-generator";
+import { MatchManager } from "@/components/features/admin/match-manager";
+import { FormSkeleton, CardSkeleton } from "@/components/shared/section-skeleton";
 
 type PageProps = { searchParams: Promise<{ id?: string }> };
 

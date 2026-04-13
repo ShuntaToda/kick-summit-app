@@ -2,10 +2,10 @@ export const dynamic = "force-dynamic";
 
 import { Suspense } from "react";
 import * as container from "@/server/container";
-import { Refresher } from "@/components/refresher";
-import { TimetableTabs } from "@/components/timetable-tabs";
-import { TimetableMatchList } from "@/components/timetable-match-list";
-import { CardSkeleton } from "@/components/section-skeleton";
+import { Refresher } from "@/components/shared/refresher";
+import { TimetableTabs } from "@/components/features/timetable/timetable-tabs";
+import { TimetableMatchList } from "@/components/features/timetable/timetable-match-list";
+import { CardSkeleton } from "@/components/shared/section-skeleton";
 
 type PageProps = { searchParams: Promise<{ id?: string }> };
 

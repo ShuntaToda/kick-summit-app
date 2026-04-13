@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import * as container from "@/server/container";
-import { EventDescription } from "@/components/event-description";
+import { EventDescription } from "@/components/features/event/event-description";
 
 type PageProps = { searchParams: Promise<{ id?: string; section?: string }> };
 
