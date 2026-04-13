@@ -12,6 +12,8 @@ const updateEventInput = z.object({
   date: z.string().min(1),
   description: z.string().default(""),
   customFields: z.array(customFieldSchema).default([]),
+  eventFields: z.array(customFieldSchema).default([]),
+  eventValues: z.record(z.string(), z.union([z.string(), z.number()])).default({}),
 });
 
 export async function updateEventFormAction(
@@ -25,6 +27,8 @@ export async function updateEventFormAction(
       date: str(formData, "date"),
       description: str(formData, "description"),
       customFields: json(formData, "customFields"),
+      eventFields: json(formData, "eventFields"),
+      eventValues: json(formData, "eventValues"),
     });
     await container.updateEvent(eventId)(input);
     revalidatePath("/admin/settings");

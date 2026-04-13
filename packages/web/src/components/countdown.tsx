@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getNow } from "@/lib/now";
 
 export function Countdown({ targetTime }: { targetTime: string }) {
   const [minutes, setMinutes] = useState(() => calcMinutes(targetTime));
@@ -18,5 +19,5 @@ export function Countdown({ targetTime }: { targetTime: string }) {
 }
 
 function calcMinutes(time: string) {
-  return Math.max(0, Math.round((new Date(time).getTime() - Date.now()) / 60000));
+  return Math.max(0, Math.round((new Date(time).getTime() - getNow()) / 60000));
 }

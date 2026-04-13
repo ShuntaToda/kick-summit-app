@@ -22,14 +22,18 @@ const init: ActionState = { success: false };
 export function TeamSettingsForm({ team, customFields, eventId }: Props) {
   const router = useRouter();
   const [color, setColor] = useState(team.color);
-  const [customValues, setCustomValues] = useState<Record<string, string | number>>(
-    team.customValues,
-  );
+  const [customValues, setCustomValues] = useState<
+    Record<string, string | number>
+  >(team.customValues);
   const [state, formAction] = useActionState(saveTeamFormAction, init);
 
   useEffect(() => {
     if (state.success) {
-      router.push(eventId !== "default" ? `/more?id=${encodeURIComponent(eventId)}` : "/more");
+      router.push(
+        eventId !== "default"
+          ? `/more?id=${encodeURIComponent(eventId)}`
+          : "/more",
+      );
     }
   }, [state.timestamp]);
 
@@ -51,7 +55,7 @@ export function TeamSettingsForm({ team, customFields, eventId }: Props) {
       <input type="hidden" name="payload" value={payload} />
       <div className="space-y-4">
         <Card>
-          <CardContent className="space-y-4 pt-6">
+          <CardContent className="space-y-4 py-6">
             <div className="space-y-2">
               <Label>チーム名</Label>
               <p className="text-sm font-medium">{team.name}</p>
@@ -70,21 +74,28 @@ export function TeamSettingsForm({ team, customFields, eventId }: Props) {
 
         {customFields.length > 0 && (
           <Card>
-            <CardContent className="space-y-4 pt-6">
+            <CardContent className="space-y-4 py-6">
               {customFields.map((field) => (
                 <div key={field.id} className="space-y-2">
                   <Label>
                     {field.label}
-                    {field.required && <span className="ml-0.5 text-destructive">*</span>}
+                    {field.required && (
+                      <span className="ml-0.5 text-destructive">*</span>
+                    )}
                   </Label>
                   <Input
                     type={field.type === "number" ? "number" : "text"}
                     min={field.type === "number" ? 0 : undefined}
-                    value={customValues[field.id] ?? (field.type === "number" ? 0 : "")}
+                    value={
+                      customValues[field.id] ??
+                      (field.type === "number" ? 0 : "")
+                    }
                     onChange={(e) =>
                       setCustomValue(
                         field.id,
-                        field.type === "number" ? Number(e.target.value) : e.target.value,
+                        field.type === "number"
+                          ? Number(e.target.value)
+                          : e.target.value,
                       )
                     }
                   />

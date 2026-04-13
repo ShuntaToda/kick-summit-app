@@ -40,12 +40,12 @@ export function TeamSelectModal() {
         <DialogHeader>
           <DialogTitle>チームを選択</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
           {teams.map((team) => (
             <Button
               key={team.id}
               variant="outline"
-              className="h-auto py-3"
+              className="h-auto justify-start py-3"
               onClick={() => handleSelect(team.id)}
             >
               <span

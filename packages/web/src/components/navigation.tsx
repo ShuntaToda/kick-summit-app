@@ -2,20 +2,19 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Home, Calendar, TableProperties, Trophy, EllipsisVertical } from "lucide-react";
+import { Home, Calendar, TableProperties, EllipsisVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "ホーム", icon: Home },
   { href: "/timetable", label: "タイムテーブル", icon: Calendar },
   { href: "/league", label: "リーグ表", icon: TableProperties },
-  { href: "/tournament", label: "トーナメント", icon: Trophy },
   { href: "/more", label: "その他", icon: EllipsisVertical },
 ];
 
 function isActive(href: string, pathname: string) {
   if (href === "/") return pathname === "/";
-  if (href === "/more") return pathname.startsWith("/more") || pathname.startsWith("/admin");
+  if (href === "/more") return pathname.startsWith("/more") || pathname.startsWith("/admin") || pathname.startsWith("/tournament");
   return pathname.startsWith(href);
 }
 

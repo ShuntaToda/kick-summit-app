@@ -29,4 +29,5 @@ export const TABLE_NAMES = {
   matches: `${prefix}-matches`,
   brackets: `${prefix}-brackets`,
   courts: `${prefix}-courts`,
+  customLeagues: `${prefix}-custom-leagues`,
 } as const;

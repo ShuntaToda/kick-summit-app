@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { Palette, ChevronRight } from "lucide-react";
 import { useTeam } from "@/hooks/use-team";
+import { getNow } from "@/lib/now";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -20,6 +21,7 @@ import { LeagueCrossTable } from "@/components/league-cross-table";
 import type { Team } from "@/server/domain/entities/team";
 import type { Match } from "@/server/domain/entities/match";
 import type { Group } from "@/server/domain/entities/group";
+import type { CustomLeague } from "@/server/domain/entities/custom-league";
 import type { StandingsRow } from "@/server/domain/services/standings-service";
 
 interface Props {
@@ -27,6 +29,7 @@ interface Props {
   matches: Match[];
   standings: Record<string, StandingsRow[]>;
   groups: Group[];
+  customLeagues: CustomLeague[];
   eventId: string;
 }
 
@@ -40,9 +43,16 @@ function getMatchState(match: Match, now: number) {
   return "finished";
 }
 
-export function HomeContent({ teams, matches, standings, groups, eventId }: Props) {
+export function HomeContent({
+  teams,
+  matches,
+  standings,
+  groups,
+  customLeagues,
+  eventId,
+}: Props) {
   const { selectedTeamId, selectTeam, clearTeam } = useTeam();
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(getNow());
 
   // localStorage に古いIDが残っている場合はクリアしてチーム選択に戻す
   useEffect(() => {
@@ -52,18 +62,20 @@ export function HomeContent({ teams, matches, standings, groups, eventId }: Prop
   }, [selectedTeamId, teams, clearTeam]);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
+    const id = setInterval(() => setNow(getNow()), 30_000);
     return () => clearInterval(id);
   }, []);
 
-  const teamMap = useMemo(
-    () => new Map(teams.map((t) => [t.id, t])),
-    [teams]
-  );
+  const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
 
   const groupNameMap = useMemo(
     () => new Map(groups.map((g) => [g.id, g.name])),
-    [groups]
+    [groups],
+  );
+
+  const customLeagueMap = useMemo(
+    () => new Map(customLeagues.map((cl) => [cl.id, cl.name])),
+    [customLeagues],
   );
 
   const myTeam = selectedTeamId ? teamMap.get(selectedTeamId) : undefined;
@@ -71,17 +83,21 @@ export function HomeContent({ teams, matches, standings, groups, eventId }: Prop
   const upcomingMatches = useMemo(() => {
     if (!selectedTeamId) return [];
     return matches
-      .filter(
-        (m) =>
-          m.status !== "finished" &&
-          (m.teamAId === selectedTeamId || m.teamBId === selectedTeamId || m.refereeTeamId === selectedTeamId)
-      )
-      .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime))
-      ;
+      .filter((m) => {
+        if (m.status === "finished") return false;
+        if (
+          m.teamAId !== selectedTeamId &&
+          m.teamBId !== selectedTeamId &&
+          m.refereeTeamId !== selectedTeamId
+        )
+          return false;
+        return true;
+      })
+      .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
   }, [matches, selectedTeamId]);
 
   const groupStandings = myTeam?.groupId
-    ? standings[myTeam.groupId] ?? []
+    ? (standings[myTeam.groupId] ?? [])
     : [];
 
   const groupTeams = useMemo(() => {
@@ -106,15 +122,57 @@ export function HomeContent({ teams, matches, standings, groups, eventId }: Prop
     return teamMap.get(id)?.color ?? "#888";
   }
 
-  function TeamLabel({ id }: { id: string | null }) {
+  function decodeRefLabel(refLabel: string): string {
+    const GROUP_RANK_PREFIX = "group-rank:";
+    if (!refLabel.startsWith(GROUP_RANK_PREFIX)) return refLabel;
+    const rest = refLabel.slice(GROUP_RANK_PREFIX.length);
+    const lastColon = rest.lastIndexOf(":");
+    if (lastColon === -1) return refLabel;
+    const gid = rest.slice(0, lastColon);
+    const rank = Number(rest.slice(lastColon + 1));
+    if (!gid || isNaN(rank)) return refLabel;
+    const name = groupNameMap.get(gid) ?? gid;
+    return `${name} ${rank}位`;
+  }
+
+  function TeamLabel({
+    id,
+    refLabel,
+  }: {
+    id: string | null;
+    refLabel?: string | null;
+  }) {
+    const info = id ? teamMap.get(id) : null;
+    if (refLabel) {
+      return (
+        <div className="text-center">
+          <span className="text-xs text-muted-foreground italic">
+            {decodeRefLabel(refLabel)}
+          </span>
+          {info && (
+            <div>
+              <span
+                className="inline-block border-b-2 pb-0.5 text-sm font-medium"
+                style={{ borderColor: info.color }}
+              >
+                {info.name}
+              </span>
+            </div>
+          )}
+        </div>
+      );
+    }
+    const color = teamColor(id);
+    const name = teamName(id);
     return (
-      <span className="inline-flex items-center gap-1.5">
+      <div className="text-center">
         <span
-          className="inline-block h-3 w-3 shrink-0 rounded-full"
-          style={{ backgroundColor: teamColor(id) }}
-        />
-        {teamName(id)}
-      </span>
+          className="inline-block border-b-2 pb-0.5 text-sm font-medium"
+          style={{ borderColor: color }}
+        >
+          {name}
+        </span>
+      </div>
     );
   }
 
@@ -134,7 +192,7 @@ export function HomeContent({ teams, matches, standings, groups, eventId }: Prop
       {/* 直近の試合 */}
       {upcomingMatches.length > 0 && (
         <Card className="gap-2 py-3">
-          <CardHeader className="pb-0">
+          <CardHeader className="pb-0 ps-2">
             <CardTitle className="text-sm font-semibold text-foreground">
               直近の試合
             </CardTitle>
@@ -148,53 +206,79 @@ export function HomeContent({ teams, matches, standings, groups, eventId }: Prop
               const isOngoing = getMatchState(match, now) === "playing";
               return (
                 <div key={match.id} className={idx > 0 ? "border-t pt-4" : ""}>
-                  <div className={`space-y-2 ${isOngoing
-                      ? "rounded-lg border-2 border-primary p-3"
-                      : isRefereeOnly
-                        ? "rounded-lg border border-dashed bg-muted p-3"
-                        : ""
-                    }`}>
+                  <div
+                    className={`space-y-2 ${
+                      isOngoing
+                        ? "rounded-lg border-2 border-primary p-3"
+                        : isRefereeOnly
+                          ? "rounded-lg border border-dashed bg-muted p-3"
+                          : ""
+                    }`}
+                  >
                     {isRefereeOnly && !isOngoing && (
                       <Badge variant="outline" className="mx-auto flex w-fit">
                         審判担当
                       </Badge>
                     )}
-                    <div className="text-sm text-muted-foreground">
-                      {match.scheduledTime && !isNaN(new Date(match.scheduledTime).getTime()) && (
-                        <>
-                          {new Date(match.scheduledTime).toLocaleTimeString("ja-JP", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}{" "}
-                        </>
+                    <div className="text-xs text-muted-foreground">
+                      {match.scheduledTime &&
+                        !isNaN(new Date(match.scheduledTime).getTime()) && (
+                          <span>
+                            {new Date(match.scheduledTime).toLocaleTimeString(
+                              "ja-JP",
+                              { hour: "2-digit", minute: "2-digit" },
+                            )}
+                            {" - "}
+                            {new Date(
+                              new Date(match.scheduledTime).getTime() +
+                                match.durationMinutes * 60 * 1000,
+                            ).toLocaleTimeString("ja-JP", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        )}
+                      {match.court && (
+                        <span className={match.scheduledTime ? " ml-1.5" : ""}>
+                          {match.court}
+                        </span>
                       )}
-                      {match.court}
                     </div>
-                    <div className={`flex items-center justify-center gap-4 ${isRefereeOnly ? "text-sm font-normal text-muted-foreground" : "text-lg font-bold"}`}>
-                      <TeamLabel id={match.teamAId} />
-                      <span className="text-muted-foreground">vs</span>
-                      <TeamLabel id={match.teamBId} />
+                    <div className={isRefereeOnly ? "opacity-60" : ""}>
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                        <TeamLabel
+                          id={match.teamAId}
+                          refLabel={match.teamARefLabel}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          vs
+                        </span>
+                        <TeamLabel
+                          id={match.teamBId}
+                          refLabel={match.teamBRefLabel}
+                        />
+                      </div>
+                      {match.refereeTeamId && !isRefereeOnly && (
+                        <div className="mt-1 text-center text-xs text-muted-foreground">
+                          審判: {teamName(match.refereeTeamId)}
+                        </div>
+                      )}
                     </div>
-                    {isOngoing && (
-                      <div className="flex items-center justify-center gap-3 text-lg font-bold">
-                        <span>{match.scoreA ?? 0}</span>
-                        <span className="text-sm text-muted-foreground">-</span>
-                        <span>{match.scoreB ?? 0}</span>
-                      </div>
-                    )}
-                    {match.refereeTeamId && !isRefereeOnly && (
-                      <div className="text-center text-xs text-muted-foreground">
-                        審判: {teamName(match.refereeTeamId)}
-                      </div>
-                    )}
                     <div className="flex items-center justify-between text-sm">
                       <Badge variant="outline">
                         {match.type === "league"
                           ? `予選 ${groupName(match.groupId)}`
-                          : "決勝トーナメント"}
+                          : match.type === "custom-league" &&
+                              match.customLeagueId
+                            ? (customLeagueMap.get(match.customLeagueId) ??
+                              "カスタムリーグ")
+                            : "決勝トーナメント"}
                       </Badge>
                       {isOngoing ? (
-                        <Badge variant="destructive" className="rounded-sm text-[10px] px-1.5 py-0">
+                        <Badge
+                          variant="destructive"
+                          className="rounded-sm text-[10px] px-1.5 py-0"
+                        >
                           試合中
                         </Badge>
                       ) : getMatchState(match, now) === "upcoming" ? (
@@ -220,7 +304,7 @@ export function HomeContent({ teams, matches, standings, groups, eventId }: Prop
       {/* グループリーグ表 */}
       {groupStandings.length > 0 && (
         <Card className="gap-2 py-3">
-          <CardHeader className="pb-0">
+          <CardHeader className="pb-0 ps-2">
             <CardTitle className="text-sm font-semibold text-foreground">
               {groupName(myTeam?.groupId ?? null)} リーグ表
             </CardTitle>
@@ -237,7 +321,9 @@ export function HomeContent({ teams, matches, standings, groups, eventId }: Prop
                     <TableHead className="w-8 text-center">分</TableHead>
                     <TableHead className="w-8 text-center">負</TableHead>
                     <TableHead className="w-10 text-center">得失</TableHead>
-                    <TableHead className="w-10 text-center font-bold">勝点</TableHead>
+                    <TableHead className="w-10 text-center font-bold">
+                      勝点
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -246,7 +332,7 @@ export function HomeContent({ teams, matches, standings, groups, eventId }: Prop
                       key={row.teamId}
                       className={
                         row.teamId === selectedTeamId
-                          ? "bg-primary/10 font-semibold"
+                          ? "bg-yellow-100 font-semibold"
                           : ""
                       }
                     >
@@ -260,7 +346,9 @@ export function HomeContent({ teams, matches, standings, groups, eventId }: Prop
                           {row.teamName}
                         </span>
                       </TableCell>
-                      <TableCell className="text-center">{row.played}</TableCell>
+                      <TableCell className="text-center">
+                        {row.played}
+                      </TableCell>
                       <TableCell className="text-center">{row.won}</TableCell>
                       <TableCell className="text-center">{row.drawn}</TableCell>
                       <TableCell className="text-center">{row.lost}</TableCell>
@@ -284,7 +372,7 @@ export function HomeContent({ teams, matches, standings, groups, eventId }: Prop
       {/* 対戦表 */}
       {groupTeams.length > 1 && (
         <Card className="gap-2 py-3">
-          <CardHeader className="pb-0">
+          <CardHeader className="pb-0 ps-2">
             <CardTitle className="text-sm font-semibold text-foreground">
               {groupName(myTeam?.groupId ?? null)} 対戦表
             </CardTitle>

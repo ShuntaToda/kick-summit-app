@@ -21,12 +21,13 @@ async function ScheduleGeneratorSection({ eventId }: { eventId: string }) {
 }
 
 async function MatchListSection({ eventId }: { eventId: string }) {
-  const [matches, teams, groups] = await Promise.all([
+  const [matches, teams, groups, customLeagues] = await Promise.all([
     container.getMatches(eventId),
     container.getTeams(eventId),
     container.getGroups(eventId),
+    container.getCustomLeagues(eventId),
   ]);
-  return <MatchManager matches={matches} teams={teams} groups={groups} eventId={eventId} />;
+  return <MatchManager matches={matches} teams={teams} groups={groups} customLeagues={customLeagues} eventId={eventId} />;
 }
 
 export default async function MatchesPage({ searchParams }: PageProps) {

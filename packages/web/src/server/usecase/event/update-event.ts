@@ -5,6 +5,8 @@ type UpdateInput = {
   date: string;
   description: string;
   customFields: CustomField[];
+  eventFields: CustomField[];
+  eventValues: Record<string, string | number>;
 };
 
 export const createUpdateEvent =

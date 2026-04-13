@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 
 type GroupInfo = {
   id: string;
   name: string;
+};
+
+type CustomLeagueInfo = {
+  id: string;
+  name: string;
+  content: React.ReactNode;
 };
 
 interface Props {
@@ -14,6 +18,7 @@ interface Props {
   leagueContentByGroup: Record<string, React.ReactNode>;
   leagueContentAll: React.ReactNode;
   tournamentContent: React.ReactNode;
+  customLeagueContent?: CustomLeagueInfo[];
 }
 
 export function TimetableTabs({
@@ -21,50 +26,38 @@ export function TimetableTabs({
   leagueContentByGroup,
   leagueContentAll,
   tournamentContent,
+  customLeagueContent = [],
 }: Props) {
-  const [groupFilter, setGroupFilter] = useState<string | null>(null);
-
   return (
-    <Tabs defaultValue="league">
-      <TabsList className="w-full">
-        <TabsTrigger value="league" className="flex-1">
-          予選
+    <Tabs defaultValue="all">
+      <TabsList className="w-full flex-wrap h-auto">
+        <TabsTrigger value="all" className="flex-1">
+          すべて
         </TabsTrigger>
-        <TabsTrigger value="tournament" className="flex-1">
-          決勝
-        </TabsTrigger>
+        {groups.map((g) => (
+          <TabsTrigger key={g.id} value={`group-${g.id}`} className="flex-1">
+            {g.name}
+          </TabsTrigger>
+        ))}
+        {customLeagueContent.map((cl) => (
+          <TabsTrigger key={cl.id} value={`cl-${cl.id}`} className="flex-1">
+            {cl.name}
+          </TabsTrigger>
+        ))}
       </TabsList>
-      <TabsContent value="league" className="mt-3 space-y-3">
-        {groups.length > 1 && (
-          <div className="flex gap-1.5 flex-wrap">
-            <Button
-              size="sm"
-              variant={groupFilter === null ? "default" : "outline"}
-              onClick={() => setGroupFilter(null)}
-            >
-              すべて
-            </Button>
-            {groups.map((g) => (
-              <Button
-                key={g.id}
-                size="sm"
-                variant={groupFilter === g.id ? "default" : "outline"}
-                onClick={() => setGroupFilter(g.id)}
-              >
-                {g.name}
-              </Button>
-            ))}
-          </div>
-        )}
-        <div className="space-y-2">
-          {groupFilter === null
-            ? leagueContentAll
-            : leagueContentByGroup[groupFilter]}
-        </div>
+      <TabsContent value="all" className="mt-3 space-y-2">
+        {leagueContentAll}
       </TabsContent>
-      <TabsContent value="tournament" className="mt-3 space-y-2">
-        {tournamentContent}
-      </TabsContent>
+      {groups.map((g) => (
+        <TabsContent key={g.id} value={`group-${g.id}`} className="mt-3 space-y-2">
+          {leagueContentByGroup[g.id]}
+        </TabsContent>
+      ))}
+      {customLeagueContent.map((cl) => (
+        <TabsContent key={cl.id} value={`cl-${cl.id}`} className="mt-3 space-y-2">
+          {cl.content}
+        </TabsContent>
+      ))}
     </Tabs>
   );
 }

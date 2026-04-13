@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const matchStatusSchema = z.enum(["scheduled", "ongoing", "finished"]);
-export const matchTypeSchema = z.enum(["league", "tournament"]);
+export const matchTypeSchema = z.enum(["league", "tournament", "custom-league"]);
 
 export type MatchStatus = z.infer<typeof matchStatusSchema>;
 export type MatchType = z.infer<typeof matchTypeSchema>;
@@ -22,6 +22,9 @@ export const matchSchema = z.object({
   court: z.string().min(1),
   status: matchStatusSchema,
   refereeTeamId: z.string().nullish().transform((v) => v ?? null),
+  customLeagueId: z.string().nullish().transform((v) => v ?? null),
+  teamARefLabel: z.string().nullish().transform((v) => v ?? null),
+  teamBRefLabel: z.string().nullish().transform((v) => v ?? null),
 });
 
 export type Match = z.infer<typeof matchSchema>;
@@ -42,6 +45,7 @@ export const changeStatusInputSchema = z.object({
 export interface MatchRepository {
   findAll(eventId: string): Promise<Match[]>;
   findByGroupId(groupId: string): Promise<Match[]>;
+  findByCustomLeagueId(customLeagueId: string): Promise<Match[]>;
   findById(id: string): Promise<Match | null>;
   save(match: Match): Promise<void>;
   updateScore(

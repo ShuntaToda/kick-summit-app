@@ -19,11 +19,13 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import type { Match, MatchType } from "@/server/domain/entities/match";
 import type { Team } from "@/server/domain/entities/team";
 import type { Group } from "@/server/domain/entities/group";
+import type { CustomLeague } from "@/server/domain/entities/custom-league";
 
 type Props = {
   matches: Match[];
   teams: Team[];
   groups: Group[];
+  customLeagues: CustomLeague[];
   eventId: string;
 };
 
@@ -51,7 +53,7 @@ function fromFormTime(local: string) {
 
 const init: ActionState = { success: false };
 
-export function MatchManager({ matches, teams, groups, eventId }: Props) {
+export function MatchManager({ matches, teams, groups, customLeagues, eventId }: Props) {
   const [editingMatch, setEditingMatch] = useState<MatchForm | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -82,7 +84,8 @@ export function MatchManager({ matches, teams, groups, eventId }: Props) {
   }, [editState.timestamp]);
 
   const teamMap = new Map(teams.map((t) => [t.id, t]));
-  const teamLabel = (id: string | null) => {
+  const teamLabel = (id: string | null, refLabel?: string | null) => {
+    if (refLabel) return <span className="italic text-muted-foreground">{refLabel}</span>;
     if (!id) return <span>TBD</span>;
     const team = teamMap.get(id);
     if (!team) return <span>{id}</span>;
@@ -111,6 +114,11 @@ export function MatchManager({ matches, teams, groups, eventId }: Props) {
   const ungroupedLeague = sorted.filter(
     (m) => m.type === "league" && !groups.some((g) => g.id === m.groupId),
   );
+
+  const customLeagueByLeague = customLeagues.map((league) => ({
+    league,
+    matches: sorted.filter((m) => m.type === "custom-league" && m.customLeagueId === league.id),
+  }));
 
   function startEdit(match: Match) {
     setEditingMatch({
@@ -180,9 +188,9 @@ export function MatchManager({ matches, teams, groups, eventId }: Props) {
                     <div className="mt-0.5">{match.court}</div>
                   </div>
                   <div className="min-w-0 flex-1 text-center text-sm">
-                    <div className="font-medium">{teamLabel(match.teamAId)}</div>
+                    <div className="font-medium">{teamLabel(match.teamAId, match.teamARefLabel)}</div>
                     <div className="text-xs text-muted-foreground">vs</div>
-                    <div className="font-medium">{teamLabel(match.teamBId)}</div>
+                    <div className="font-medium">{teamLabel(match.teamBId, match.teamBRefLabel)}</div>
                     {match.refereeTeamId && (
                       <div className="mt-0.5 text-xs text-muted-foreground">
                         審判: {teamMap.get(match.refereeTeamId)?.name ?? match.refereeTeamId}
@@ -222,6 +230,11 @@ export function MatchManager({ matches, teams, groups, eventId }: Props) {
       ))}
       {renderMatchList("予選リーグ - 未分類", ungroupedLeague)}
       {renderMatchList("決勝トーナメント", tournamentMatches)}
+      {customLeagueByLeague.map(({ league, matches: lm }) => (
+        <div key={league.id}>
+          {renderMatchList(`カスタムリーグ - ${league.name}`, lm)}
+        </div>
+      ))}
 
       {showAddForm ? (
         <Card>

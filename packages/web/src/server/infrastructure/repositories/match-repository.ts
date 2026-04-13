@@ -39,6 +39,18 @@ export class DynamoMatchRepository implements MatchRepository {
     return (result.Items ?? []).map((item) => matchSchema.parse(item));
   }
 
+  async findByCustomLeagueId(customLeagueId: string): Promise<Match[]> {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAMES.matches,
+        IndexName: "custom-league-index",
+        KeyConditionExpression: "customLeagueId = :clid",
+        ExpressionAttributeValues: { ":clid": customLeagueId },
+      }),
+    );
+    return (result.Items ?? []).map((item) => matchSchema.parse(item));
+  }
+
   async findById(id: string): Promise<Match | null> {
     const result = await docClient.send(
       new GetCommand({

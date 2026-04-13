@@ -2,20 +2,24 @@
 
 import { useMemo } from "react";
 import type { Team } from "@/server/domain/entities/team";
-import type { Match } from "@/server/domain/entities/match";
+import type { Match, MatchType } from "@/server/domain/entities/match";
 
 interface Props {
   teams: Team[];
   matches: Match[];
   highlightTeamId?: string | null;
+  matchType?: MatchType;
 }
 
-type CellResult = {
-  symbol: "○" | "×" | "△";
-  score: string;
-} | {
-  symbol: "--";
-} | null;
+type CellResult =
+  | {
+      symbol: "○" | "×" | "△";
+      score: string;
+    }
+  | {
+      symbol: "--";
+    }
+  | null;
 
 function getResult(
   teamId: string,
@@ -43,15 +47,20 @@ function getResult(
   return { symbol, score: `${myScore} - ${oppScore}` };
 }
 
-export function LeagueCrossTable({ teams, matches, highlightTeamId }: Props) {
+export function LeagueCrossTable({
+  teams,
+  matches,
+  highlightTeamId,
+  matchType = "league",
+}: Props) {
   const matchMap = useMemo(() => {
     const map = new Map<string, Match>();
     for (const m of matches) {
-      if (m.type !== "league" || !m.teamAId || !m.teamBId) continue;
+      if (m.type !== matchType || !m.teamAId || !m.teamBId) continue;
       map.set(`${m.teamAId}-${m.teamBId}`, m);
     }
     return map;
-  }, [matches]);
+  }, [matches, matchType]);
 
   if (teams.length === 0) return null;
 
@@ -65,7 +74,7 @@ export function LeagueCrossTable({ teams, matches, highlightTeamId }: Props) {
               <th
                 key={t.id}
                 className={`border p-1.5 bg-muted text-center whitespace-nowrap ${
-                  t.id === highlightTeamId ? "bg-primary/10" : ""
+                  t.id === highlightTeamId ? "bg-yellow-100" : ""
                 }`}
               >
                 <div className="flex items-center justify-center gap-1">
@@ -77,15 +86,13 @@ export function LeagueCrossTable({ teams, matches, highlightTeamId }: Props) {
                 </div>
               </th>
             ))}
-
-
           </tr>
         </thead>
         <tbody>
           {teams.map((rowTeam) => (
             <tr
               key={rowTeam.id}
-              className={rowTeam.id === highlightTeamId ? "bg-primary/10" : ""}
+              className={rowTeam.id === highlightTeamId ? "bg-yellow-100" : ""}
             >
               <td className="border p-1.5 font-medium whitespace-nowrap bg-muted">
                 <div className="flex items-center gap-1">
@@ -99,10 +106,7 @@ export function LeagueCrossTable({ teams, matches, highlightTeamId }: Props) {
               {teams.map((colTeam) => {
                 if (rowTeam.id === colTeam.id) {
                   return (
-                    <td
-                      key={colTeam.id}
-                      className="border p-1.5 bg-muted/50"
-                    />
+                    <td key={colTeam.id} className="border p-1.5 bg-muted/50" />
                   );
                 }
                 const result = getResult(rowTeam.id, colTeam.id, matchMap);
@@ -113,28 +117,31 @@ export function LeagueCrossTable({ teams, matches, highlightTeamId }: Props) {
                 }
                 if (result.symbol === "--") {
                   return (
-                    <td key={colTeam.id} className="border p-1.5 text-center text-muted-foreground">
+                    <td
+                      key={colTeam.id}
+                      className="border p-1.5 text-center text-muted-foreground"
+                    >
                       <div>--</div>
                     </td>
                   );
                 }
                 return (
                   <td key={colTeam.id} className="border p-1.5 text-center">
-                    <div className={
-                      result.symbol === "○"
-                        ? "text-primary"
-                        : result.symbol === "×"
-                          ? "text-destructive"
-                          : "text-muted-foreground"
-                    }>
+                    <div
+                      className={
+                        result.symbol === "○"
+                          ? "text-blue-600"
+                          : result.symbol === "×"
+                            ? "text-destructive"
+                            : "text-green-600"
+                      }
+                    >
                       {result.symbol}
                     </div>
                     <div>{result.score}</div>
                   </td>
                 );
               })}
-
-
             </tr>
           ))}
         </tbody>

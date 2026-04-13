@@ -20,8 +20,12 @@ const AdminContext = createContext<AdminContextValue>({
   logout: () => {},
 });
 
+const DEV_ADMIN =
+  process.env.NODE_ENV === "development" &&
+  process.env.NEXT_PUBLIC_DEV_ADMIN === "true";
+
 export function AdminProvider({ children }: { children: React.ReactNode }) {
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(DEV_ADMIN);
 
   const login = useCallback(async (eventId: string, password: string) => {
     const ok = await verifyPassword(eventId, password);

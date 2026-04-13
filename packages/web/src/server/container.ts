@@ -6,6 +6,7 @@ import { DynamoBracketRepository } from "./infrastructure/repositories/bracket-r
 import { DynamoEventRepository } from "./infrastructure/repositories/event-repository";
 import { DynamoGroupRepository } from "./infrastructure/repositories/group-repository";
 import { DynamoCourtRepository } from "./infrastructure/repositories/court-repository";
+import { DynamoCustomLeagueRepository } from "./infrastructure/repositories/custom-league-repository";
 import { createGetTeams } from "./usecase/team/get-teams";
 import { createGetMatches, createGetMatch } from "./usecase/match/get-matches";
 import { createSubmitScore } from "./usecase/match/submit-score";
@@ -26,6 +27,9 @@ import { createGenerateBrackets } from "./usecase/bracket/generate-brackets";
 import { createResolveMatchResults } from "./usecase/bracket/resolve-match-results";
 import { createSaveCourt } from "./usecase/court/save-court";
 import { createDeleteCourt } from "./usecase/court/delete-court";
+import { createSaveCustomLeague } from "./usecase/custom-league/save-custom-league";
+import { createDeleteCustomLeague } from "./usecase/custom-league/delete-custom-league";
+import { createGetCustomLeagueStandings } from "./usecase/standings/get-custom-league-standings";
 
 // --- Repositories ---
 const teamRepo = new DynamoTeamRepository();
@@ -34,6 +38,7 @@ const bracketRepo = new DynamoBracketRepository();
 const eventRepo = new DynamoEventRepository();
 const groupRepo = new DynamoGroupRepository();
 const courtRepo = new DynamoCourtRepository();
+const customLeagueRepo = new DynamoCustomLeagueRepository();
 
 // --- Read (cache で引数ベースのリクエスト単位メモ化) ---
 export const getTeams = cache((eid: string) => createGetTeams(teamRepo, eid)());
@@ -45,6 +50,8 @@ export const getStandings = cache((eid: string) => createGetStandings(matchRepo,
 export const getEventTournamentData = cache((eid: string) => createGetEventTournamentData(bracketRepo, matchRepo, teamRepo, eid)());
 export const getEvent = cache((eid: string) => eventRepo.findById(eid));
 export const getCourts = cache((eid: string) => courtRepo.findAll(eid));
+export const getCustomLeagues = cache((eid: string) => customLeagueRepo.findAll(eid));
+export const getCustomLeagueStandings = cache((eid: string) => createGetCustomLeagueStandings(matchRepo, teamRepo, customLeagueRepo, eid)());
 
 // --- Write ---
 export const submitScore = createSubmitScore(matchRepo);
@@ -60,7 +67,9 @@ export const deleteMatch = createDeleteMatch(matchRepo);
 export const saveBracket = createSaveBracket(bracketRepo, matchRepo);
 export const deleteBracket = createDeleteBracket(bracketRepo, matchRepo);
 export const generateBrackets = createGenerateBrackets(bracketRepo, matchRepo);
-export const resolveMatchResults = createResolveMatchResults(bracketRepo, matchRepo);
+export const resolveMatchResults = createResolveMatchResults(bracketRepo, matchRepo, teamRepo, groupRepo);
 export const saveCourt = createSaveCourt(courtRepo);
 export const deleteCourt = createDeleteCourt(courtRepo);
+export const saveCustomLeague = createSaveCustomLeague(customLeagueRepo);
+export const deleteCustomLeague = createDeleteCustomLeague(customLeagueRepo);
 export { DEFAULT_EVENT_ID };

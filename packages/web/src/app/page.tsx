@@ -9,15 +9,16 @@ import { CardSkeleton } from "@/components/section-skeleton";
 type PageProps = { searchParams: Promise<{ id?: string }> };
 
 async function HomeData({ eventId }: { eventId: string }) {
-  const [teams, matches, standings, groups] = await Promise.all([
+  const [teams, matches, standings, groups, customLeagues] = await Promise.all([
     container.getTeams(eventId),
     container.getMatches(eventId),
     container.getStandings(eventId),
     container.getGroups(eventId),
+    container.getCustomLeagues(eventId),
   ]);
 
   return (
-    <HomeContent teams={teams} matches={matches} standings={standings} groups={groups} eventId={eventId} />
+    <HomeContent teams={teams} matches={matches} standings={standings} groups={groups} customLeagues={customLeagues} eventId={eventId} />
   );
 }
 

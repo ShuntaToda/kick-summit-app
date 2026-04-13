@@ -201,63 +201,59 @@ function TeamFormFields({
       <input type="hidden" name="eventId" value={eventId} />
       <input type="hidden" name="payload" value={payload} />
       <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs">チーム名</Label>
+        <div className="space-y-1">
+          <Label className="text-xs">チーム名</Label>
+          <Input
+            value={form.name}
+            onChange={(e) => onChange({ ...form, name: e.target.value })}
+            autoFocus
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">グループ</Label>
+          <Select
+            value={form.groupId}
+            onValueChange={(v) => onChange({ ...form, groupId: v })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {groups.map((g) => (
+                <SelectItem key={g.id} value={g.id}>
+                  {g.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">カラー</Label>
+          <Input
+            type="color"
+            value={form.color}
+            onChange={(e) => onChange({ ...form, color: e.target.value })}
+          />
+        </div>
+        {customFields.map((field) => (
+          <div key={field.id} className="space-y-1">
+            <Label className="text-xs">
+              {field.label}
+              {field.required && <span className="ml-0.5 text-destructive">*</span>}
+            </Label>
             <Input
-              value={form.name}
-              onChange={(e) => onChange({ ...form, name: e.target.value })}
-              autoFocus
+              type={field.type === "number" ? "number" : "text"}
+              min={field.type === "number" ? 0 : undefined}
+              value={form.customValues[field.id] ?? (field.type === "number" ? 0 : "")}
+              onChange={(e) =>
+                setCustomValue(
+                  field.id,
+                  field.type === "number" ? Number(e.target.value) : e.target.value,
+                )
+              }
             />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">グループ</Label>
-            <Select
-              value={form.groupId}
-              onValueChange={(v) => onChange({ ...form, groupId: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {groups.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs">カラー</Label>
-            <Input
-              type="color"
-              value={form.color}
-              onChange={(e) => onChange({ ...form, color: e.target.value })}
-            />
-          </div>
-          {customFields.map((field) => (
-            <div key={field.id} className="space-y-1">
-              <Label className="text-xs">
-                {field.label}
-                {field.required && <span className="ml-0.5 text-destructive">*</span>}
-              </Label>
-              <Input
-                type={field.type === "number" ? "number" : "text"}
-                min={field.type === "number" ? 0 : undefined}
-                value={form.customValues[field.id] ?? (field.type === "number" ? 0 : "")}
-                onChange={(e) =>
-                  setCustomValue(
-                    field.id,
-                    field.type === "number" ? Number(e.target.value) : e.target.value,
-                  )
-                }
-              />
-            </div>
-          ))}
-        </div>
+        ))}
         <div className="flex gap-2">
           <SubmitButton size="sm" disabled={!form.name.trim()}>
             {isNew ? "追加" : "保存"}

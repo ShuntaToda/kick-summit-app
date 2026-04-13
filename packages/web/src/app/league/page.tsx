@@ -9,11 +9,13 @@ import { CardSkeleton } from "@/components/section-skeleton";
 type PageProps = { searchParams: Promise<{ id?: string }> };
 
 async function LeagueData({ eventId }: { eventId: string }) {
-  const [standings, groups, teams, matches] = await Promise.all([
+  const [standings, groups, teams, matches, customLeagues, customLeagueStandings] = await Promise.all([
     container.getStandings(eventId),
     container.getGroups(eventId),
     container.getTeams(eventId),
     container.getMatches(eventId),
+    container.getCustomLeagues(eventId),
+    container.getCustomLeagueStandings(eventId),
   ]);
 
   const groupNames = Object.fromEntries(groups.map((g) => [g.id, g.name]));
@@ -24,6 +26,8 @@ async function LeagueData({ eventId }: { eventId: string }) {
       groupNames={groupNames}
       teams={teams}
       matches={matches}
+      customLeagues={customLeagues}
+      customLeagueStandings={customLeagueStandings}
     />
   );
 }

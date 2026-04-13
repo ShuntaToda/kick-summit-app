@@ -77,6 +77,9 @@ export const createSaveBracket =
       court: input.court ?? existing?.court ?? "A",
       status: existing?.status ?? ("scheduled" as MatchStatus),
       refereeTeamId: existing?.refereeTeamId ?? null,
+      customLeagueId: null,
+      teamARefLabel: null,
+      teamBRefLabel: null,
     });
 
     await bracketRepo.save({

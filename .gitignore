@@ -37,3 +37,5 @@ yarn-error.log*
 coverage/
 
 CLAUDE.md
+
+scripts/

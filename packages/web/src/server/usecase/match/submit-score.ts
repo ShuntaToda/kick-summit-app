@@ -14,12 +14,16 @@ export const createSubmitScore =
   async (input: SubmitScoreInput): Promise<void> => {
     const validated = submitScoreInputSchema.parse(input);
 
+    // 既存のステータスを維持するため、まず現在の試合を取得
+    const existing = await matchRepo.findById(validated.matchId);
+    const status = existing?.status ?? "scheduled";
+
     await matchRepo.updateScore(
       validated.matchId,
       validated.scoreA,
       validated.scoreB,
       validated.halfScoreA,
       validated.halfScoreB,
-      "finished",
+      status,
     );
   };

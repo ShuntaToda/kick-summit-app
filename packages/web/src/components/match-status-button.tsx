@@ -4,6 +4,10 @@ import { useAdmin } from "@/hooks/use-admin";
 import { changeMatchStatusAction } from "@/lib/actions/match";
 import { SubmitButton } from "@/components/ui/submit-button";
 
+async function changeStatusVoid(formData: FormData): Promise<void> {
+  await changeMatchStatusAction(formData);
+}
+
 interface Props {
   matchId: string;
   status: "scheduled" | "ongoing" | "finished";
@@ -16,7 +20,7 @@ export function MatchStatusButton({ matchId, status }: Props) {
 
   if (status === "scheduled") {
     return (
-      <form action={changeMatchStatusAction}>
+      <form action={changeStatusVoid}>
         <input type="hidden" name="matchId" value={matchId} />
         <input type="hidden" name="status" value="ongoing" />
         <SubmitButton
@@ -33,7 +37,7 @@ export function MatchStatusButton({ matchId, status }: Props) {
 
   if (status === "ongoing") {
     return (
-      <form action={changeMatchStatusAction}>
+      <form action={changeStatusVoid}>
         <input type="hidden" name="matchId" value={matchId} />
         <input type="hidden" name="status" value="finished" />
         <SubmitButton

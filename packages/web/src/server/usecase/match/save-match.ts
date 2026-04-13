@@ -13,6 +13,9 @@ type SaveMatchInput = {
   court: string;
   status: MatchStatus;
   refereeTeamId?: string | null;
+  customLeagueId?: string | null;
+  teamARefLabel?: string | null;
+  teamBRefLabel?: string | null;
 };
 
 export const createSaveMatch =
@@ -36,5 +39,8 @@ export const createSaveMatch =
       court: input.court,
       status: input.status,
       refereeTeamId: input.refereeTeamId ?? existing?.refereeTeamId ?? null,
+      customLeagueId: input.customLeagueId ?? existing?.customLeagueId ?? null,
+      teamARefLabel: input.teamARefLabel ?? existing?.teamARefLabel ?? null,
+      teamBRefLabel: input.teamBRefLabel ?? existing?.teamBRefLabel ?? null,
     });
   };

@@ -87,6 +87,24 @@ export class KickSummitStack extends cdk.Stack {
       partitionKey: { name: "groupId", type: dynamodb.AttributeType.STRING },
     });
 
+    matchesTable.addGlobalSecondaryIndex({
+      indexName: "custom-league-index",
+      partitionKey: { name: "customLeagueId", type: dynamodb.AttributeType.STRING },
+    });
+
+    // --- Custom Leagues ---
+    const customLeaguesTable = new dynamodb.Table(this, "CustomLeaguesTable", {
+      tableName: `${prefix}-custom-leagues`,
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    customLeaguesTable.addGlobalSecondaryIndex({
+      indexName: "eventId-index",
+      partitionKey: { name: "eventId", type: dynamodb.AttributeType.STRING },
+    });
+
     // --- Brackets ---
     const bracketsTable = new dynamodb.Table(this, "BracketsTable", {
       tableName: `${prefix}-brackets`,
@@ -100,14 +118,14 @@ export class KickSummitStack extends cdk.Stack {
       partitionKey: { name: "eventId", type: dynamodb.AttributeType.STRING },
     });
 
-    const allTables = [eventsTable, groupsTable, courtsTable, teamsTable, matchesTable, bracketsTable];
+    const allTables = [eventsTable, groupsTable, courtsTable, teamsTable, matchesTable, bracketsTable, customLeaguesTable];
 
     // ==========================================
     // Lambda (Next.js + Lambda Web Adapter)
     // ==========================================
     const webFunction = new lambda.DockerImageFunction(this, "WebFunction", {
       code: lambda.DockerImageCode.fromImageAsset(
-        path.join(__dirname, "..", "..", ".."), // monorepo root
+        path.resolve(process.cwd(), "..", ".."), // monorepo root (cwd = packages/infra)
         {
           file: "packages/web/Dockerfile",
           exclude: ["packages/infra", "cdk.out"],

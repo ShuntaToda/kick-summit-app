@@ -10,15 +10,21 @@ import { CardSkeleton } from "@/components/section-skeleton";
 type PageProps = { searchParams: Promise<{ id?: string }> };
 
 async function TimetableData({ eventId }: { eventId: string }) {
-  const [teams, matches, groups] = await Promise.all([
+  const [teams, matches, groups, customLeagues] = await Promise.all([
     container.getTeams(eventId),
     container.getMatches(eventId),
     container.getGroups(eventId),
+    container.getCustomLeagues(eventId),
   ]);
 
   const teamMap: Record<string, { name: string; color: string; groupId: string }> = {};
   for (const t of teams) {
     teamMap[t.id] = { name: t.name, color: t.color, groupId: t.groupId };
+  }
+
+  const groupMap: Record<string, string> = {};
+  for (const g of groups) {
+    groupMap[g.id] = g.name;
   }
 
   const sortByTime = (a: { scheduledTime: string }, b: { scheduledTime: string }) =>
@@ -36,20 +42,38 @@ async function TimetableData({ eventId }: { eventId: string }) {
   for (const group of groups) {
     const groupMatches = leagueMatches.filter((m) => m.groupId === group.id);
     leagueContentByGroup[group.id] = (
-      <TimetableMatchList matches={groupMatches} teamMap={teamMap} />
+      <TimetableMatchList matches={groupMatches} teamMap={teamMap} groupMap={groupMap} eventId={eventId} />
     );
   }
+
+  const customLeagueContent: { id: string; name: string; content: React.ReactNode }[] = customLeagues.map((league) => ({
+    id: league.id,
+    name: league.name,
+    content: (
+      <TimetableMatchList
+        matches={matches.filter((m) => m.type === "custom-league" && m.customLeagueId === league.id).sort(sortByTime)}
+        teamMap={teamMap}
+        groupMap={groupMap}
+        eventId={eventId}
+      />
+    ),
+  }));
+
+  const allMatches = matches
+    .filter((m) => m.type === "league" || m.type === "custom-league")
+    .sort(sortByTime);
 
   return (
     <TimetableTabs
       groups={groups.map((g) => ({ id: g.id, name: g.name }))}
       leagueContentAll={
-        <TimetableMatchList matches={leagueMatches} teamMap={teamMap} />
+        <TimetableMatchList matches={allMatches} teamMap={teamMap} groupMap={groupMap} eventId={eventId} />
       }
       leagueContentByGroup={leagueContentByGroup}
       tournamentContent={
-        <TimetableMatchList matches={tournamentMatches} teamMap={teamMap} />
+        <TimetableMatchList matches={tournamentMatches} teamMap={teamMap} groupMap={groupMap} eventId={eventId} />
       }
+      customLeagueContent={customLeagueContent}
     />
   );
 }

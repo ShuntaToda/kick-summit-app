@@ -9,6 +9,10 @@ export const customFieldSchema = z.object({
 
 export type CustomField = z.infer<typeof customFieldSchema>;
 
+// 後方互換のためエイリアスを残す
+export const eventCustomFieldSchema = customFieldSchema;
+export type EventCustomField = CustomField;
+
 export const eventSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -16,6 +20,8 @@ export const eventSchema = z.object({
   passwordHash: z.string(),
   description: z.string().default(""),
   customFields: z.array(customFieldSchema).default([]),
+  eventFields: z.array(customFieldSchema).default([]),
+  eventValues: z.record(z.string(), z.union([z.string(), z.number()])).default({}),
 });
 
 export type Event = z.infer<typeof eventSchema>;
