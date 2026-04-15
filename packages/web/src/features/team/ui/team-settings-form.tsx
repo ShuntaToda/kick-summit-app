@@ -22,17 +22,15 @@ const init: ActionState = { success: false };
 export function TeamSettingsForm({ team, customFields, eventId }: Props) {
   const router = useRouter();
   const [color, setColor] = useState(team.color);
-  const [customValues, setCustomValues] = useState<
-    Record<string, string | number>
-  >(team.customValues);
+  const [customValues, setCustomValues] = useState<Record<string, string | number>>(
+    team.customValues,
+  );
   const [state, formAction] = useActionState(saveTeamFormAction, init);
 
   useEffect(() => {
     if (state.success) {
       router.push(
-        eventId !== "default"
-          ? `/more?id=${encodeURIComponent(eventId)}`
-          : "/more",
+        eventId !== "default" ? `/more?id=${encodeURIComponent(eventId)}` : "/more",
       );
     }
   }, [state.timestamp]);

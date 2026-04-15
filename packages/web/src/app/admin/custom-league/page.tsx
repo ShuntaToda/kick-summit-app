@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import * as container from "@/server/container";
-import { CustomLeagueManager } from "@/components/features/admin/custom-league-manager";
+import { CustomLeagueManager } from "@/features/admin/ui/custom-league-manager";
 import { CardSkeleton } from "@/components/shared/section-skeleton";
 
 type PageProps = { searchParams: Promise<{ id?: string }> };

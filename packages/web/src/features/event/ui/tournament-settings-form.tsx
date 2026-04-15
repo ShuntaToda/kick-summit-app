@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useActionState } from "react";
+import { useState, useActionState } from "react";
 import { nanoid } from "nanoid";
 import dynamic from "next/dynamic";
 import { updateEventFormAction } from "@/lib/actions/event";
-import type { ActionState } from "@/lib/actions/helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Plus, Trash2 } from "lucide-react";
+import type { ActionState } from "@/lib/actions/helpers";
 import type { Event, CustomField, ContentSection } from "@/server/domain/entities/event";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
@@ -28,7 +28,6 @@ type Props = {
   eventId: string;
 };
 
-const init: ActionState = { success: false };
 
 // 現在のイベント全体を hidden fields で持ち回し、一部だけ上書きして保存する
 function buildFormData(
@@ -136,43 +135,23 @@ function SectionSaveButton({ state }: { state: ActionState }) {
   );
 }
 
+const init: ActionState = { success: false };
+
 export function TournamentSettingsForm({ event, eventId }: Props) {
-  // 基本情報
   const [basicState, basicAction] = useActionState(updateEventFormAction, init);
 
-  // 大会カスタム項目
   const [eventFields, setEventFields] = useState<CustomField[]>(event.eventFields);
   const [eventValues, setEventValues] = useState<Record<string, string | number>>(event.eventValues);
   const [eventFieldState, eventFieldAction] = useActionState(updateEventFormAction, init);
 
-  // チームカスタム項目
   const [customFields, setCustomFields] = useState<CustomField[]>(event.customFields);
   const [customFieldState, customFieldAction] = useActionState(updateEventFormAction, init);
 
-  // 大会説明
   const [description, setDescription] = useState(event.description);
   const [descState, descAction] = useActionState(updateEventFormAction, init);
 
-  // カスタム文章セクション
   const [contentSections, setContentSections] = useState<ContentSection[]>(event.contentSections);
   const [sectionsState, sectionsAction] = useActionState(updateEventFormAction, init);
-
-  function addSection() {
-    setContentSections([...contentSections, { id: nanoid(), title: "", body: "" }]);
-  }
-  function updateSection(id: string, patch: Partial<ContentSection>) {
-    setContentSections(contentSections.map((s) => s.id === id ? { ...s, ...patch } : s));
-  }
-  function removeSection(id: string) {
-    setContentSections(contentSections.filter((s) => s.id !== id));
-  }
-
-  // 保存成功時に state を event に反映（各セクション独立）
-  useEffect(() => {
-    if (eventFieldState.success) {
-      // eventFields/eventValues はすでに state 管理なので何もしない
-    }
-  }, [eventFieldState.timestamp]);
 
   function addEventField() {
     setEventFields([...eventFields, { id: nanoid(), label: "", type: "number", required: false }]);
@@ -196,6 +175,16 @@ export function TournamentSettingsForm({ event, eventId }: Props) {
   }
   function removeCustomField(id: string) {
     setCustomFields(customFields.filter((f) => f.id !== id));
+  }
+
+  function addSection() {
+    setContentSections([...contentSections, { id: nanoid(), title: "", body: "" }]);
+  }
+  function updateSection(id: string, patch: Partial<ContentSection>) {
+    setContentSections(contentSections.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  }
+  function removeSection(id: string) {
+    setContentSections(contentSections.filter((s) => s.id !== id));
   }
 
   const base = buildFormData(event, eventId, {});

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import * as container from "@/server/container";
-import { GroupManager } from "@/components/features/admin/group-manager";
+import { GroupManager } from "@/features/admin/ui/group-manager";
 import { CardSkeleton } from "@/components/shared/section-skeleton";
 
 type PageProps = { searchParams: Promise<{ id?: string }> };

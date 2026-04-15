@@ -11,6 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SubmitButton } from "@/components/ui/submit-button";
+import {
+  calcBracketSize,
+  calcTotalRounds,
+  buildRoundLabels,
+} from "@/features/admin/usecases/bracket-generator";
 
 type Props = {
   existingBrackets: Bracket[];
@@ -36,8 +41,8 @@ export function BracketGenerator({ existingBrackets, courts: courtsMaster, event
     }
   }, [genState.timestamp]);
 
-  const bracketSize = teamCount >= 2 ? Math.pow(2, Math.ceil(Math.log2(teamCount))) : 0;
-  const totalRounds = bracketSize >= 2 ? Math.ceil(Math.log2(bracketSize)) : 0;
+  const bracketSize = calcBracketSize(teamCount);
+  const totalRounds = calcTotalRounds(bracketSize);
 
   const existingSameName = useMemo(
     () => existingBrackets.filter((b) => b.bracketName === bracketName),
@@ -49,15 +54,10 @@ export function BracketGenerator({ existingBrackets, courts: courtsMaster, event
     [existingBrackets],
   );
 
-  const roundLabels = useMemo(() => {
-    const labels: string[] = [];
-    for (let r = 1; r <= totalRounds; r++) {
-      if (r === totalRounds && totalRounds >= 2) labels.push("決勝");
-      else if (r === totalRounds - 1 && totalRounds >= 3) labels.push("準決勝");
-      else labels.push(`${r}回戦`);
-    }
-    return labels;
-  }, [totalRounds]);
+  const roundLabels = useMemo(
+    () => buildRoundLabels(totalRounds),
+    [totalRounds],
+  );
 
   const canGenerate = bracketName.trim().length > 0 && teamCount >= 2 && selectedCourts.length > 0;
 
@@ -68,6 +68,12 @@ export function BracketGenerator({ existingBrackets, courts: courtsMaster, event
     defaultDurationMinutes: durationMinutes,
     defaultCourts: selectedCourts,
   });
+
+  function toggleCourt(courtName: string, checked: boolean) {
+    setSelectedCourts((prev) =>
+      checked ? [...prev, courtName] : prev.filter((n) => n !== courtName),
+    );
+  }
 
   return (
     <Card>
@@ -122,13 +128,7 @@ export function BracketGenerator({ existingBrackets, courts: courtsMaster, event
                 <label key={c.id} className="flex items-center gap-1.5 text-sm">
                   <Checkbox
                     checked={selectedCourts.includes(c.name)}
-                    onCheckedChange={(checked) => {
-                      setSelectedCourts((prev) =>
-                        checked
-                          ? [...prev, c.name]
-                          : prev.filter((n) => n !== c.name),
-                      );
-                    }}
+                    onCheckedChange={(checked) => toggleCourt(c.name, !!checked)}
                   />
                   {c.name}
                 </label>

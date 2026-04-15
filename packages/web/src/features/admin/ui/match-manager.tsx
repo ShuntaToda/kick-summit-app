@@ -16,18 +16,11 @@ import {
 } from "@/components/ui/select";
 import { Trash2, Pencil, Plus, X } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
-import type { Match, MatchType } from "@/server/domain/entities/match";
+import type { Match } from "@/server/domain/entities/match";
 import type { Team } from "@/server/domain/entities/team";
 import type { Group } from "@/server/domain/entities/group";
 import type { CustomLeague } from "@/server/domain/entities/custom-league";
-
-type Props = {
-  matches: Match[];
-  teams: Team[];
-  groups: Group[];
-  customLeagues: CustomLeague[];
-  eventId: string;
-};
+import type { MatchType } from "@/server/domain/entities/match";
 
 type MatchForm = {
   id?: string;
@@ -42,22 +35,49 @@ type MatchForm = {
   refereeTeamId2: string;
 };
 
+function buildMatchPayload(form: MatchForm): string {
+  const scheduledTime = form.scheduledTime ? `${form.scheduledTime}:00` : "";
+  return JSON.stringify({
+    id: form.id,
+    type: "league",
+    groupId: form.groupId || null,
+    teamAId: form.teamAId || null,
+    teamBId: form.teamBId || null,
+    scheduledTime,
+    durationMinutes: form.durationMinutes,
+    court: form.court,
+    refereeTeamId: form.refereeTeamId || null,
+    refereeTeamId2: form.refereeTeamId2 || null,
+  });
+}
+
+function matchToForm(match: Match): MatchForm {
+  return {
+    id: match.id,
+    type: match.type,
+    groupId: match.groupId ?? "",
+    teamAId: match.teamAId ?? "",
+    teamBId: match.teamBId ?? "",
+    scheduledTime: match.scheduledTime.slice(0, 16),
+    durationMinutes: match.durationMinutes,
+    court: match.court,
+    refereeTeamId: match.refereeTeamId ?? "",
+    refereeTeamId2: match.refereeTeamId2 ?? "",
+  };
+}
+
+type Props = {
+  matches: Match[];
+  teams: Team[];
+  groups: Group[];
+  customLeagues: CustomLeague[];
+  eventId: string;
+};
+
 const NONE = "__none__";
-
-function toFormTime(iso: string) {
-  return iso.slice(0, 16);
-}
-
-function fromFormTime(local: string) {
-  return local ? `${local}:00` : "";
-}
-
 const init: ActionState = { success: false };
 
 export function MatchManager({ matches, teams, groups, customLeagues, eventId }: Props) {
-  const [editingMatch, setEditingMatch] = useState<MatchForm | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-
   const emptyForm: MatchForm = {
     type: "league",
     groupId: groups[0]?.id ?? "",
@@ -70,6 +90,8 @@ export function MatchManager({ matches, teams, groups, customLeagues, eventId }:
     refereeTeamId2: "",
   };
 
+  const [editingMatch, setEditingMatch] = useState<MatchForm | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [newMatch, setNewMatch] = useState<MatchForm>(emptyForm);
   const [addState, addAction] = useActionState(saveMatchFormAction, init);
   const [editState, editAction] = useActionState(saveMatchFormAction, init);
@@ -84,6 +106,10 @@ export function MatchManager({ matches, teams, groups, customLeagues, eventId }:
   useEffect(() => {
     if (editState.success) setEditingMatch(null);
   }, [editState.timestamp]);
+
+  function startEdit(match: Match) {
+    setEditingMatch(matchToForm(match));
+  }
 
   const teamMap = new Map(teams.map((t) => [t.id, t]));
   const teamLabel = (id: string | null, refLabel?: string | null) => {
@@ -122,36 +148,6 @@ export function MatchManager({ matches, teams, groups, customLeagues, eventId }:
     matches: sorted.filter((m) => m.type === "custom-league" && m.customLeagueId === league.id),
   }));
 
-  function startEdit(match: Match) {
-    setEditingMatch({
-      id: match.id,
-      type: match.type,
-      groupId: match.groupId ?? "",
-      teamAId: match.teamAId ?? "",
-      teamBId: match.teamBId ?? "",
-      scheduledTime: toFormTime(match.scheduledTime),
-      durationMinutes: match.durationMinutes,
-      court: match.court,
-      refereeTeamId: match.refereeTeamId ?? "",
-      refereeTeamId2: match.refereeTeamId2 ?? "",
-    });
-  }
-
-  function buildPayload(form: MatchForm) {
-    return JSON.stringify({
-      id: form.id,
-      type: "league",
-      groupId: form.groupId || null,
-      teamAId: form.teamAId || null,
-      teamBId: form.teamBId || null,
-      scheduledTime: fromFormTime(form.scheduledTime),
-      durationMinutes: form.durationMinutes,
-      court: form.court,
-      refereeTeamId: form.refereeTeamId || null,
-      refereeTeamId2: form.refereeTeamId2 || null,
-    });
-  }
-
   function renderMatchList(title: string, list: Match[]) {
     if (list.length === 0) return null;
     return (
@@ -168,7 +164,7 @@ export function MatchManager({ matches, teams, groups, customLeagues, eventId }:
                   groups={groups}
                   formAction={editAction}
                   eventId={eventId}
-                  buildPayload={buildPayload}
+                  buildPayload={buildMatchPayload}
                   onCancel={() => setEditingMatch(null)}
                 />
               ) : (
@@ -251,7 +247,7 @@ export function MatchManager({ matches, teams, groups, customLeagues, eventId }:
               groups={groups}
               formAction={addAction}
               eventId={eventId}
-              buildPayload={buildPayload}
+              buildPayload={buildMatchPayload}
               onCancel={() => setShowAddForm(false)}
               isNew
             />

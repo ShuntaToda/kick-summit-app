@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import * as container from "@/server/container";
-import { TeamSettingsForm } from "@/components/features/team/team-settings-form";
+import { TeamSettingsForm } from "@/features/team/ui/team-settings-form";
 import { FormSkeleton } from "@/components/shared/section-skeleton";
 
 type PageProps = { searchParams: Promise<{ id?: string; teamId?: string }> };

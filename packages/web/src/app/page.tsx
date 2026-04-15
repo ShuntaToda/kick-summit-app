@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { Suspense } from "react";
 import * as container from "@/server/container";
-import { HomeContent } from "@/components/features/home/home-content";
+import { HomeContent } from "@/features/home/ui/home-content";
 import { Refresher } from "@/components/shared/refresher";
 import { CardSkeleton } from "@/components/shared/section-skeleton";
 

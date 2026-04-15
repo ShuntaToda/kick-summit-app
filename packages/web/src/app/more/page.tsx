@@ -2,8 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronRight, FileText } from "lucide-react";
 import * as container from "@/server/container";
-import { AdminToggle } from "@/components/features/admin/admin-toggle";
-import { TeamSettingsLink } from "@/components/features/team/team-settings-link";
+import { AdminToggle } from "@/features/admin/ui/admin-toggle";
+import { TeamSettingsLink } from "@/features/team/ui/team-settings-link";
 import { Card, CardContent } from "@/components/ui/card";
 import { buildEventUrl, eventIdSuffix } from "@/components/utils/event-url";
 

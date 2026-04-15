@@ -35,25 +35,22 @@ type TeamForm = {
   customValues: Record<string, string | number>;
 };
 
-const emptyForm = (groupId: string): TeamForm => ({
-  groupId,
-  name: "",
-  color: "#3b82f6",
-  customValues: {},
-});
-
 const init: ActionState = { success: false };
+
+function emptyTeamForm(groupId: string): TeamForm {
+  return { groupId, name: "", color: "#3b82f6", customValues: {} };
+}
 
 export function TeamManager({ teams, groups, customFields, eventId }: Props) {
   const [editingTeam, setEditingTeam] = useState<TeamForm | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newTeam, setNewTeam] = useState<TeamForm>(emptyForm(groups[0]?.id ?? ""));
+  const [newTeam, setNewTeam] = useState<TeamForm>(emptyTeamForm(groups[0]?.id ?? ""));
   const [addState, addAction] = useActionState(saveTeamFormAction, init);
   const [editState, editAction] = useActionState(saveTeamFormAction, init);
 
   useEffect(() => {
     if (addState.success) {
-      setNewTeam(emptyForm(groups[0]?.id ?? ""));
+      setNewTeam(emptyTeamForm(groups[0]?.id ?? ""));
       setShowAddForm(false);
     }
   }, [addState.timestamp]);
@@ -61,11 +58,6 @@ export function TeamManager({ teams, groups, customFields, eventId }: Props) {
   useEffect(() => {
     if (editState.success) setEditingTeam(null);
   }, [editState.timestamp]);
-
-  const teamsByGroup = groups.map((group) => ({
-    group,
-    teams: teams.filter((t) => t.groupId === group.id),
-  }));
 
   function startEdit(team: Team) {
     setEditingTeam({
@@ -76,6 +68,11 @@ export function TeamManager({ teams, groups, customFields, eventId }: Props) {
       customValues: team.customValues,
     });
   }
+
+  const teamsByGroup = groups.map((group) => ({
+    group,
+    teams: teams.filter((t) => t.groupId === group.id),
+  }));
 
   return (
     <div className="space-y-6">

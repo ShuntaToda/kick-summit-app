@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Navigation } from "@/components/shared/navigation";
-import { TeamSelectModal } from "@/components/features/team/team-select-modal";
+import { TeamSelectModal } from "@/features/team/ui/team-select-modal";
 
 export const metadata: Metadata = {
   title: "AWS Kick Summit",

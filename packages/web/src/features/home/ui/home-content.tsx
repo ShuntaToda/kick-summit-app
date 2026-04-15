@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Palette, ChevronRight } from "lucide-react";
 import { useTeam } from "@/hooks/use-team";
 import { getNow } from "@/lib/now";
+import { getMatchState } from "@/features/match/usecases/match-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -15,8 +16,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { TeamHeader } from "@/components/features/team/team-header";
-import { LeagueCrossTable } from "@/components/features/league/league-cross-table";
+import { TeamHeader } from "@/features/team/ui/team-header";
+import { LeagueCrossTable } from "@/features/league/ui/league-cross-table";
 import { decodeRefLabel } from "@/components/utils/ref-label";
 import type { Team } from "@/server/domain/entities/team";
 import type { Match } from "@/server/domain/entities/match";
@@ -33,15 +34,6 @@ interface Props {
   eventId: string;
 }
 
-function getMatchState(match: Match, now: number) {
-  if (!match.scheduledTime) return "upcoming";
-  const start = new Date(match.scheduledTime).getTime();
-  if (isNaN(start)) return "upcoming";
-  const end = start + match.durationMinutes * 60 * 1000;
-  if (now >= start && now < end) return "playing";
-  if (now < start) return "upcoming";
-  return "finished";
-}
 
 export function HomeContent({
   teams,
@@ -54,7 +46,6 @@ export function HomeContent({
   const { selectedTeamId, selectTeam, clearTeam } = useTeam();
   const [now, setNow] = useState(getNow());
 
-  // localStorage に古いIDが残っている場合はクリアしてチーム選択に戻す
   useEffect(() => {
     if (selectedTeamId && !teams.some((t) => t.id === selectedTeamId)) {
       clearTeam();
@@ -85,21 +76,17 @@ export function HomeContent({
     return matches
       .filter((m) => {
         if (m.status === "finished") return false;
-        if (
-          m.teamAId !== selectedTeamId &&
-          m.teamBId !== selectedTeamId &&
-          m.refereeTeamId !== selectedTeamId &&
-          m.refereeTeamId2 !== selectedTeamId
-        )
-          return false;
-        return true;
+        return (
+          m.teamAId === selectedTeamId ||
+          m.teamBId === selectedTeamId ||
+          m.refereeTeamId === selectedTeamId ||
+          m.refereeTeamId2 === selectedTeamId
+        );
       })
       .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
   }, [matches, selectedTeamId]);
 
-  const groupStandings = myTeam?.groupId
-    ? (standings[myTeam.groupId] ?? [])
-    : [];
+  const groupStandings = myTeam?.groupId ? (standings[myTeam.groupId] ?? []) : [];
 
   const groupTeams = useMemo(() => {
     if (!myTeam?.groupId) return [];

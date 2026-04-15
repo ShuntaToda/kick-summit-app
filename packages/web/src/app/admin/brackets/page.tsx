@@ -4,8 +4,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import * as container from "@/server/container";
-import { BracketGenerator } from "@/components/features/admin/bracket-generator";
-import { BracketManager } from "@/components/features/admin/bracket-manager";
+import { BracketGenerator } from "@/features/admin/ui/bracket-generator";
+import { BracketManager } from "@/features/admin/ui/bracket-manager";
 import { FormSkeleton, CardSkeleton } from "@/components/shared/section-skeleton";
 
 type PageProps = { searchParams: Promise<{ id?: string }> };

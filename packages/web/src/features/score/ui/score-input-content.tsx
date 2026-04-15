@@ -26,10 +26,7 @@ export function ScoreInputContent({ teams, matches }: Props) {
   const { isAdmin } = useAdmin();
   const router = useRouter();
 
-  const teamMap = useMemo(
-    () => new Map(teams.map((t) => [t.id, t])),
-    [teams]
-  );
+  const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
 
   const [selected, setSelected] = useState<string | null>(null);
   const [scoreA, setScoreA] = useState("");
@@ -39,19 +36,17 @@ export function ScoreInputContent({ teams, matches }: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   const editableMatches = useMemo(
-    () =>
-      matches
-        .filter((m) => m.status !== "finished")
-        .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime)),
-    [matches]
+    () => matches
+      .filter((m) => m.status !== "finished")
+      .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime)),
+    [matches],
   );
 
   const finishedMatches = useMemo(
-    () =>
-      matches
-        .filter((m) => m.status === "finished")
-        .sort((a, b) => b.scheduledTime.localeCompare(a.scheduledTime)),
-    [matches]
+    () => matches
+      .filter((m) => m.status === "finished")
+      .sort((a, b) => b.scheduledTime.localeCompare(a.scheduledTime)),
+    [matches],
   );
 
   function teamName(id: string | null) {
@@ -75,7 +70,7 @@ export function ScoreInputContent({ teams, matches }: Props) {
       Number(scoreA) || 0,
       Number(scoreB) || 0,
       halfA ? Number(halfA) : null,
-      halfB ? Number(halfB) : null
+      halfB ? Number(halfB) : null,
     );
     setSelected(null);
     setScoreA("");
@@ -85,6 +80,8 @@ export function ScoreInputContent({ teams, matches }: Props) {
     setSubmitting(false);
     router.refresh();
   }
+
+  const selectedMatch = matches.find((m) => m.id === selected);
 
   if (!isAdmin) {
     return (
@@ -96,7 +93,6 @@ export function ScoreInputContent({ teams, matches }: Props) {
     );
   }
 
-  const selectedMatch = matches.find((m) => m.id === selected);
 
   return (
     <div className="space-y-4">

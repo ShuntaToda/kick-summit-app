@@ -68,11 +68,7 @@ export function GroupManager({ groups, eventId }: Props) {
             ) : (
               <>
                 <span className="flex-1 text-sm font-medium">{group.name}</span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => startEdit(group)}
-                >
+                <Button size="icon" variant="ghost" onClick={() => startEdit(group)}>
                   <Pencil className="h-4 w-4" />
                 </Button>
                 <form action={deleteGroupAction}>
@@ -95,9 +91,7 @@ export function GroupManager({ groups, eventId }: Props) {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
-        <SubmitButton disabled={!newName.trim()}>
-          追加
-        </SubmitButton>
+        <SubmitButton disabled={!newName.trim()}>追加</SubmitButton>
       </form>
     </div>
   );

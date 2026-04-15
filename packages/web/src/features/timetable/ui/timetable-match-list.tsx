@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useTransition, useRef } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { getNow } from "@/lib/now";
 import { submitScore, changeMatchStatusAction } from "@/lib/actions/match";
+import { getMatchState } from "@/features/match/usecases/match-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +19,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Match } from "@/server/domain/entities/match";
-import { getNow } from "@/lib/now";
 import { decodeRefLabel } from "@/components/utils/ref-label";
+
+function formatTime(scheduledTime: string): string | null {
+  if (!scheduledTime) return null;
+  const d = new Date(scheduledTime);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+}
+
+function findScrollTargetId(matches: Match[], now: number): string | null {
+  const playing = matches.find((m) => getMatchState(m, now) === "playing");
+  if (playing) return playing.id;
+  const upcoming = matches.find((m) => getMatchState(m, now) === "upcoming");
+  return upcoming?.id ?? null;
+}
 
 type TeamInfo = {
   name: string;
@@ -28,28 +43,12 @@ type TeamInfo = {
 type Props = {
   matches: Match[];
   teamMap: Record<string, TeamInfo>;
-  groupMap?: Record<string, string>; // groupId -> groupName
+  groupMap?: Record<string, string>;
   eventId?: string;
 };
 
 
 
-function getMatchState(match: Match, now: number) {
-  if (!match.scheduledTime) return "upcoming";
-  const start = new Date(match.scheduledTime).getTime();
-  if (isNaN(start)) return "upcoming";
-  const end = start + match.durationMinutes * 60 * 1000;
-  if (now >= start && now < end) return "playing";
-  if (now < start) return "upcoming";
-  return "finished";
-}
-
-function formatTime(scheduledTime: string) {
-  if (!scheduledTime) return null;
-  const d = new Date(scheduledTime);
-  if (isNaN(d.getTime())) return null;
-  return d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-}
 
 function TeamName({
   id,
@@ -216,12 +215,6 @@ function ScoreDialog({
   const [scoreA, setScoreA] = useState(String(match.scoreA ?? 0));
   const [scoreB, setScoreB] = useState(String(match.scoreB ?? 0));
   const [finished, setFinished] = useState(match.status === "finished");
-  const teamAName = match.teamAId
-    ? (teamMap[match.teamAId]?.name ?? "TBD")
-    : "TBD";
-  const teamBName = match.teamBId
-    ? (teamMap[match.teamBId]?.name ?? "TBD")
-    : "TBD";
 
   function handleSubmit() {
     startTransition(async () => {
@@ -238,6 +231,9 @@ function ScoreDialog({
       onClose();
     });
   }
+
+  const teamAName = match.teamAId ? (teamMap[match.teamAId]?.name ?? "TBD") : "TBD";
+  const teamBName = match.teamBId ? (teamMap[match.teamBId]?.name ?? "TBD") : "TBD";
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -303,6 +299,8 @@ export function TimetableMatchList({ matches, teamMap, groupMap = {}, eventId }:
     }
   }, []);
 
+  const scrollTargetId = findScrollTargetId(matches, now);
+
   if (matches.length === 0) {
     return (
       <p className="py-8 text-center text-muted-foreground">
@@ -310,14 +308,6 @@ export function TimetableMatchList({ matches, teamMap, groupMap = {}, eventId }:
       </p>
     );
   }
-
-  // 試合中 or 最初の未来の試合をスクロール対象にする
-  const scrollTargetId = (() => {
-    const playing = matches.find((m) => getMatchState(m, now) === "playing");
-    if (playing) return playing.id;
-    const upcoming = matches.find((m) => getMatchState(m, now) === "upcoming");
-    return upcoming?.id ?? null;
-  })();
 
   return (
     <>

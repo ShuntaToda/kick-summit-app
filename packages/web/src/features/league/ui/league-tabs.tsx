@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { LeagueCrossTable } from "@/components/features/league/league-cross-table";
+import { LeagueCrossTable } from "@/features/league/ui/league-cross-table";
 import type { StandingsRow } from "@/server/domain/services/standings-service";
 import type { Team } from "@/server/domain/entities/team";
 import type { Match } from "@/server/domain/entities/match";
