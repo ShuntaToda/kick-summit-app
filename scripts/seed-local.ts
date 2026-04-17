@@ -1,5 +1,5 @@
 import { DynamoDBClient, CreateTableCommand, DeleteTableCommand } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, ScanCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { nanoid } from "nanoid";
 
 const isLocal = process.argv.includes("--local");
@@ -13,7 +13,8 @@ const client = new DynamoDBClient({
 });
 const docClient = DynamoDBDocumentClient.from(client);
 
-const PREFIX = "kick-summit";
+const stage = process.env.STAGE ?? "prod";
+const PREFIX = stage === "prod" ? "kick-summit" : `kick-summit-${stage}`;
 const TABLES = {
   events: `${PREFIX}-events`,
   groups: `${PREFIX}-groups`,
@@ -26,7 +27,7 @@ const TABLES = {
 
 const EVENT_ID = "aws-kick-summit";
 
-console.log(`ターゲット: ${isLocal ? "ローカル (localhost:8000)" : "AWS リモート"}\n`);
+console.log(`ターゲット: ${isLocal ? "ローカル (localhost:8000)" : `AWS リモート (${PREFIX})`}\n`);
 
 async function recreateTableLocal(name: string, keySchema: { hash: string; range?: string }, gsiList?: { name: string; hash: string; range?: string }[]) {
   try { await client.send(new DeleteTableCommand({ TableName: name })); } catch { /* 存在しない */ }
@@ -67,6 +68,25 @@ async function put(table: string, item: Record<string, unknown>) {
   await docClient.send(new PutCommand({ TableName: table, Item: removeNulls(item) }));
 }
 
+async function deleteAllItems(table: string) {
+  let lastKey: Record<string, unknown> | undefined;
+  let total = 0;
+  do {
+    const result = await docClient.send(new ScanCommand({
+      TableName: table,
+      ProjectionExpression: "id",
+      ...(lastKey && { ExclusiveStartKey: lastKey }),
+    }));
+    const items = result.Items ?? [];
+    for (const item of items) {
+      await docClient.send(new DeleteCommand({ TableName: table, Key: { id: item.id } }));
+    }
+    total += items.length;
+    lastKey = result.LastEvaluatedKey;
+  } while (lastKey);
+  if (total > 0) console.log(`  ${table}: ${total}件 削除`);
+}
+
 async function seed() {
   if (isLocal) {
     console.log("=== テーブル再作成 (ローカル) ===");
@@ -77,6 +97,11 @@ async function seed() {
     await recreateTableLocal(TABLES.brackets, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
     await recreateTableLocal(TABLES.courts, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
     await recreateTableLocal(TABLES.customLeagues, { hash: "id" }, [{ name: "eventId-index", hash: "eventId" }]);
+  } else {
+    console.log("=== 既存データ削除 (リモート) ===");
+    for (const table of Object.values(TABLES)) {
+      await deleteAllItems(table);
+    }
   }
 
   // チームカスタムフィールドID（本番と同じ値）
@@ -121,19 +146,19 @@ async function seed() {
   console.log("=== チーム ===");
   const teams = [
     // グループA（コートA）
-    { id: "WHqVUilIx0fHtM-b4QzA8",  name: "クラスメソッド",         groupId: GROUP_A, color: "#f7e73b", customValues: { [CF_REP]: "やまぐち", [CF_PARTY]: 7 } },
-    { id: "QoyOjEOrrlBlo3M4vhW5N",  name: "AWS",                    groupId: GROUP_A, color: "#f7a93b", customValues: { [CF_REP]: "山田",     [CF_PARTY]: 3 } },
-    { id: "ntt-data-team-001",       name: "NTTデータ",              groupId: GROUP_A, color: "#6366f1", customValues: { [CF_REP]: "伊藤",     [CF_PARTY]: 4 } },
-    { id: "Qu85OO3uv7apNvdN_-2fm",  name: "アイレット",             groupId: GROUP_A, color: "#3b82f6", customValues: { [CF_REP]: "鈴木",     [CF_PARTY]: 5 } },
-    { id: "WqecCmBeXF8zM3J0rjONL",  name: "サーバーワークス",        groupId: GROUP_A, color: "#f73b3b", customValues: { [CF_REP]: "中村",     [CF_PARTY]: 6 } },
-    { id: "4qNCC4sHN21mp8HgdGBN-",  name: "ソニービズネットワークス", groupId: GROUP_A, color: "#3bf748", customValues: { [CF_REP]: "渡辺",     [CF_PARTY]: 5 } },
+    { id: "WHqVUilIx0fHtM-b4QzA8",  name: "クラスメソッド",         groupId: GROUP_A, color: "#f7e73b", customValues: isLocal ? { [CF_REP]: "やまぐち", [CF_PARTY]: 7 } : { [CF_REP]: "", [CF_PARTY]: 0 } },
+    { id: "QoyOjEOrrlBlo3M4vhW5N",  name: "AWS",                    groupId: GROUP_A, color: "#f7a93b", customValues: isLocal ? { [CF_REP]: "山田",     [CF_PARTY]: 3 } : { [CF_REP]: "", [CF_PARTY]: 0 } },
+    { id: "ntt-data-team-001",       name: "NTTデータ",              groupId: GROUP_A, color: "#6366f1", customValues: isLocal ? { [CF_REP]: "伊藤",     [CF_PARTY]: 4 } : { [CF_REP]: "", [CF_PARTY]: 0 } },
+    { id: "Qu85OO3uv7apNvdN_-2fm",  name: "アイレット",             groupId: GROUP_A, color: "#3b82f6", customValues: isLocal ? { [CF_REP]: "鈴木",     [CF_PARTY]: 5 } : { [CF_REP]: "", [CF_PARTY]: 0 } },
+    { id: "WqecCmBeXF8zM3J0rjONL",  name: "サーバーワークス",        groupId: GROUP_A, color: "#f73b3b", customValues: isLocal ? { [CF_REP]: "中村",     [CF_PARTY]: 6 } : { [CF_REP]: "", [CF_PARTY]: 0 } },
+    { id: "4qNCC4sHN21mp8HgdGBN-",  name: "ソニービズネットワークス", groupId: GROUP_A, color: "#3bf748", customValues: isLocal ? { [CF_REP]: "渡辺",     [CF_PARTY]: 5 } : { [CF_REP]: "", [CF_PARTY]: 0 } },
     // グループB（コートB）
-    { id: "2-oz27sexEU2eaJnXCysu",  name: "ウイングアーク1st",       groupId: GROUP_B, color: "#3be1f7", customValues: { [CF_REP]: "田中",     [CF_PARTY]: 4 } },
-    { id: "P0qlPKU1bcOq0ZBOPXJ8B",  name: "スカイアーチ",            groupId: GROUP_B, color: "#90f73b", customValues: { [CF_REP]: "佐藤",     [CF_PARTY]: 6 } },
-    { id: "irh0VNKbjFeakqme7c_rB",  name: "Zscaler",                groupId: GROUP_B, color: "#f73ba9", customValues: { [CF_REP]: "小林",     [CF_PARTY]: 4 } },
-    { id: "GKC7DDi-DxI0nzvYovWoF",  name: "ISV連合 with ProServ",   groupId: GROUP_B, color: "#01c7fc", customValues: { [CF_REP]: "まつお",   [CF_PARTY]: 5 } },
-    { id: "SlhMuk-PeUTiRF1aWwORj",  name: "アンチ＆ギーク",          groupId: GROUP_B, color: "#c5f73b", customValues: { [CF_REP]: "加藤",     [CF_PARTY]: 8 } },
-    { id: "open-joint-team-001",     name: "有志合同チーム",          groupId: GROUP_B, color: "#a8a29e", customValues: { [CF_REP]: "吉田",     [CF_PARTY]: 5 } },
+    { id: "2-oz27sexEU2eaJnXCysu",  name: "ウイングアーク1st",       groupId: GROUP_B, color: "#3be1f7", customValues: isLocal ? { [CF_REP]: "田中",     [CF_PARTY]: 4 } : { [CF_REP]: "", [CF_PARTY]: 0 } },
+    { id: "P0qlPKU1bcOq0ZBOPXJ8B",  name: "スカイアーチ",            groupId: GROUP_B, color: "#90f73b", customValues: isLocal ? { [CF_REP]: "佐藤",     [CF_PARTY]: 6 } : { [CF_REP]: "", [CF_PARTY]: 0 } },
+    { id: "irh0VNKbjFeakqme7c_rB",  name: "Zscaler",                groupId: GROUP_B, color: "#f73ba9", customValues: isLocal ? { [CF_REP]: "小林",     [CF_PARTY]: 4 } : { [CF_REP]: "", [CF_PARTY]: 0 } },
+    { id: "GKC7DDi-DxI0nzvYovWoF",  name: "ISV連合 with ProServ",   groupId: GROUP_B, color: "#01c7fc", customValues: isLocal ? { [CF_REP]: "まつお",   [CF_PARTY]: 5 } : { [CF_REP]: "", [CF_PARTY]: 0 } },
+    { id: "SlhMuk-PeUTiRF1aWwORj",  name: "アンチ＆ギーク",          groupId: GROUP_B, color: "#c5f73b", customValues: isLocal ? { [CF_REP]: "加藤",     [CF_PARTY]: 8 } : { [CF_REP]: "", [CF_PARTY]: 0 } },
+    { id: "open-joint-team-001",     name: "有志合同チーム",          groupId: GROUP_B, color: "#a8a29e", customValues: isLocal ? { [CF_REP]: "吉田",     [CF_PARTY]: 5 } : { [CF_REP]: "", [CF_PARTY]: 0 } },
   ];
   for (const t of teams) {
     await put(TABLES.teams, { ...t, eventId: EVENT_ID });
