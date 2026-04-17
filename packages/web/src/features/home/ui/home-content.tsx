@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { Palette, ChevronRight } from "lucide-react";
 import { useTeam } from "@/hooks/use-team";
-import { getNow } from "@/lib/now";
+import { getNow, onNowChange } from "@/lib/now";
 import { getMatchState } from "@/features/match/usecases/match-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -54,7 +54,8 @@ export function HomeContent({
 
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 30_000);
-    return () => clearInterval(id);
+    const unsub = onNowChange(() => setNow(getNow()));
+    return () => { clearInterval(id); unsub(); };
   }, []);
 
   const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
