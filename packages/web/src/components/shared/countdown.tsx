@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getNow } from "@/lib/now";
+import { getNow, onNowChange } from "@/lib/now";
 
 export function Countdown({ targetTime }: { targetTime: string }) {
   const [minutes, setMinutes] = useState(() => calcMinutes(targetTime));
 
   useEffect(() => {
     const id = setInterval(() => setMinutes(calcMinutes(targetTime)), 60000);
-    return () => clearInterval(id);
+    const unsub = onNowChange(() => setMinutes(calcMinutes(targetTime)));
+    return () => { clearInterval(id); unsub(); };
   }, [targetTime]);
 
   if (minutes <= 0) return null;
