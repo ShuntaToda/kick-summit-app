@@ -36,16 +36,6 @@ async function DescriptionData({ eventId, sectionId }: { eventId: string; sectio
       ) : (
         <p className="text-sm text-muted-foreground">説明がありません。</p>
       )}
-      {event.contentSections && event.contentSections.length > 0 && (
-        <div className="space-y-6 mt-4">
-          {event.contentSections.map((section) => (
-            <div key={section.id} className="space-y-2">
-              <h3 className="text-base font-semibold">{section.title}</h3>
-              <EventDescription description={section.body} />
-            </div>
-          ))}
-        </div>
-      )}
     </>
   );
 }
