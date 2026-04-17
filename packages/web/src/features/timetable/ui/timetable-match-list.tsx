@@ -2,9 +2,13 @@
 
 import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { getNow } from "@/lib/now";
+import { getNow, onNowChange } from "@/lib/now";
 import { submitScore, changeMatchStatusAction } from "@/lib/actions/match";
 import { getMatchState } from "@/features/match/usecases/match-state";
+import { canEditMatch } from "@/features/score/usecases/score-permission";
+import { normalizeScoreInput } from "@/features/score/usecases/score-input";
+import { useAdmin } from "@/hooks/use-admin";
+import { useTeam } from "@/hooks/use-team";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -248,8 +252,10 @@ function ScoreDialog({
               <Input
                 type="number"
                 min={0}
+                max={99}
+                inputMode="numeric"
                 value={scoreA}
-                onChange={(e) => setScoreA(e.target.value)}
+                onChange={(e) => setScoreA(normalizeScoreInput(e.target.value))}
                 className="text-center text-lg font-bold"
               />
             </div>
@@ -259,8 +265,10 @@ function ScoreDialog({
               <Input
                 type="number"
                 min={0}
+                max={99}
+                inputMode="numeric"
                 value={scoreB}
-                onChange={(e) => setScoreB(e.target.value)}
+                onChange={(e) => setScoreB(normalizeScoreInput(e.target.value))}
                 className="text-center text-lg font-bold"
               />
             </div>
@@ -284,13 +292,16 @@ function ScoreDialog({
 }
 
 export function TimetableMatchList({ matches, teamMap, groupMap = {}, eventId }: Props) {
+  const { isAdmin } = useAdmin();
+  const { selectedTeamId } = useTeam();
   const [now, setNow] = useState(getNow());
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const scrollTargetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 30_000);
-    return () => clearInterval(id);
+    const unsub = onNowChange(() => setNow(getNow()));
+    return () => { clearInterval(id); unsub(); };
   }, []);
 
   useEffect(() => {
@@ -311,17 +322,20 @@ export function TimetableMatchList({ matches, teamMap, groupMap = {}, eventId }:
 
   return (
     <>
-      {matches.map((m) => (
-        <div key={m.id} ref={m.id === scrollTargetId ? scrollTargetRef : undefined}>
-          <MatchRow
-            match={m}
-            teamMap={teamMap}
-            groupMap={groupMap}
-            now={now}
-            onTap={() => setEditingMatch(m)}
-          />
-        </div>
-      ))}
+      {matches.map((m) => {
+        const editable = canEditMatch(m, selectedTeamId, isAdmin);
+        return (
+          <div key={m.id} ref={m.id === scrollTargetId ? scrollTargetRef : undefined}>
+            <MatchRow
+              match={m}
+              teamMap={teamMap}
+              groupMap={groupMap}
+              now={now}
+              onTap={editable ? () => setEditingMatch(m) : undefined}
+            />
+          </div>
+        );
+      })}
       {editingMatch && (
         <ScoreDialog
           match={editingMatch}

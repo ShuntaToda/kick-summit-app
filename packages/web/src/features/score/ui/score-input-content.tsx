@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "@/hooks/use-admin";
+import { useTeam } from "@/hooks/use-team";
 import { submitScore } from "@/lib/actions/match";
 import {
   Card,
@@ -16,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import type { Team } from "@/server/domain/entities/team";
 import type { Match } from "@/server/domain/entities/match";
+import { canEditMatch } from "@/features/score/usecases/score-permission";
+import { normalizeScoreInput } from "@/features/score/usecases/score-input";
 
 interface Props {
   teams: Team[];
@@ -24,6 +27,7 @@ interface Props {
 
 export function ScoreInputContent({ teams, matches }: Props) {
   const { isAdmin } = useAdmin();
+  const { selectedTeamId } = useTeam();
   const router = useRouter();
 
   const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
@@ -38,8 +42,9 @@ export function ScoreInputContent({ teams, matches }: Props) {
   const editableMatches = useMemo(
     () => matches
       .filter((m) => m.status !== "finished")
+      .filter((m) => canEditMatch(m, selectedTeamId, isAdmin))
       .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime)),
-    [matches],
+    [matches, selectedTeamId, isAdmin],
   );
 
   const finishedMatches = useMemo(
@@ -83,11 +88,11 @@ export function ScoreInputContent({ teams, matches }: Props) {
 
   const selectedMatch = matches.find((m) => m.id === selected);
 
-  if (!isAdmin) {
+  if (!isAdmin && !selectedTeamId) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
+      <div className="flex min-h-[50vh] items-center justify-center px-4 text-center">
         <p className="text-muted-foreground">
-          管理者モードでログインしてください
+          チームを選択してください
         </p>
       </div>
     );
@@ -115,8 +120,10 @@ export function ScoreInputContent({ teams, matches }: Props) {
                 <Input
                   type="number"
                   min={0}
+                  max={99}
+                  inputMode="numeric"
                   value={halfA}
-                  onChange={(e) => setHalfA(e.target.value)}
+                  onChange={(e) => setHalfA(normalizeScoreInput(e.target.value))}
                   className="text-center"
                   placeholder={teamName(selectedMatch.teamAId)}
                 />
@@ -124,8 +131,10 @@ export function ScoreInputContent({ teams, matches }: Props) {
                 <Input
                   type="number"
                   min={0}
+                  max={99}
+                  inputMode="numeric"
                   value={halfB}
-                  onChange={(e) => setHalfB(e.target.value)}
+                  onChange={(e) => setHalfB(normalizeScoreInput(e.target.value))}
                   className="text-center"
                   placeholder={teamName(selectedMatch.teamBId)}
                 />
@@ -139,8 +148,10 @@ export function ScoreInputContent({ teams, matches }: Props) {
                 <Input
                   type="number"
                   min={0}
+                  max={99}
+                  inputMode="numeric"
                   value={scoreA}
-                  onChange={(e) => setScoreA(e.target.value)}
+                  onChange={(e) => setScoreA(normalizeScoreInput(e.target.value))}
                   className="text-center text-lg font-bold"
                   placeholder={teamName(selectedMatch.teamAId)}
                 />
@@ -150,8 +161,10 @@ export function ScoreInputContent({ teams, matches }: Props) {
                 <Input
                   type="number"
                   min={0}
+                  max={99}
+                  inputMode="numeric"
                   value={scoreB}
-                  onChange={(e) => setScoreB(e.target.value)}
+                  onChange={(e) => setScoreB(normalizeScoreInput(e.target.value))}
                   className="text-center text-lg font-bold"
                   placeholder={teamName(selectedMatch.teamBId)}
                 />
@@ -179,7 +192,7 @@ export function ScoreInputContent({ teams, matches }: Props) {
         </h2>
         {editableMatches.length === 0 && (
           <p className="py-4 text-center text-sm text-muted-foreground">
-            全試合のスコアが確定済みです
+            入力可能な試合はありません
           </p>
         )}
         {editableMatches.map((m) => (
@@ -204,7 +217,7 @@ export function ScoreInputContent({ teams, matches }: Props) {
         ))}
       </div>
 
-      {finishedMatches.length > 0 && (
+      {isAdmin && finishedMatches.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-medium text-muted-foreground">
             確定済み（タップで修正可）

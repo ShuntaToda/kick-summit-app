@@ -32,10 +32,10 @@ export type Match = z.infer<typeof matchSchema>;
 
 export const submitScoreInputSchema = z.object({
   matchId: z.string().min(1),
-  scoreA: z.number().int().min(0),
-  scoreB: z.number().int().min(0),
-  halfScoreA: z.number().int().min(0).nullable(),
-  halfScoreB: z.number().int().min(0).nullable(),
+  scoreA: z.number().int().min(0).max(99),
+  scoreB: z.number().int().min(0).max(99),
+  halfScoreA: z.number().int().min(0).max(99).nullable(),
+  halfScoreB: z.number().int().min(0).max(99).nullable(),
 });
 
 export const changeStatusInputSchema = z.object({
