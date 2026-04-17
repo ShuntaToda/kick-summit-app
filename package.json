@@ -9,6 +9,7 @@
     "db:stop": "docker compose down",
     "db:seed": "tsx scripts/seed-local.ts --local",
     "db:seed:remote": "tsx scripts/seed-local.ts",
+    "db:seed:test": "STAGE=test tsx scripts/seed-local.ts",
     "db:admin": "DYNAMO_ENDPOINT=http://localhost:8000 AWS_REGION=ap-northeast-1 AWS_ACCESS_KEY_ID=dummy AWS_SECRET_ACCESS_KEY=dummy dynamodb-admin",
     "build": "turbo build",
     "lint": "turbo lint",

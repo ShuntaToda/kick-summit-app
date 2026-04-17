@@ -6,11 +6,15 @@ import * as apigwv2Integrations from "aws-cdk-lib/aws-apigatewayv2-integrations"
 import * as path from "path";
 import type { Construct } from "constructs";
 
+interface KickSummitStackProps extends cdk.StackProps {
+  prefix: string;
+}
+
 export class KickSummitStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: KickSummitStackProps) {
     super(scope, id, props);
 
-    const prefix = "kick-summit";
+    const { prefix } = props;
 
     // ==========================================
     // DynamoDB Tables
@@ -150,7 +154,7 @@ export class KickSummitStack extends cdk.Stack {
     // API Gateway (HTTP API)
     // ==========================================
     const httpApi = new apigwv2.HttpApi(this, "HttpApi", {
-      apiName: "kick-summit-api",
+      apiName: `${prefix}-api`,
       defaultIntegration: new apigwv2Integrations.HttpLambdaIntegration(
         "LambdaIntegration",
         webFunction
