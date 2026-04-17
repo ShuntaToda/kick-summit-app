@@ -10,12 +10,14 @@ import { CardSkeleton } from "@/components/shared/section-skeleton";
 type PageProps = { searchParams: Promise<{ id?: string }> };
 
 async function TimetableData({ eventId }: { eventId: string }) {
-  const [teams, matches, groups, customLeagues] = await Promise.all([
+  const [teams, matches, groupsRaw, customLeagues] = await Promise.all([
     container.getTeams(eventId),
     container.getMatches(eventId),
     container.getGroups(eventId),
     container.getCustomLeagues(eventId),
   ]);
+
+  const groups = [...groupsRaw].sort((a, b) => a.name.localeCompare(b.name));
 
   const teamMap: Record<string, { name: string; color: string; groupId: string }> = {};
   for (const t of teams) {

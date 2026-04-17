@@ -14,7 +14,9 @@ export const createGetStandings =
 
     const targetGroupIds = groupId
       ? [groupId]
-      : groups.map((g) => g.id).sort();
+      : [...groups]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((g) => g.id);
 
     return Object.fromEntries(
       targetGroupIds.map((gId) => [gId, computeStandings(matches, teams, gId)]),

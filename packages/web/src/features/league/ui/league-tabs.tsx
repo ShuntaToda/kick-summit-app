@@ -82,7 +82,7 @@ function StandingsTable({
 
 export function LeagueTabs({ standings, groupNames, teams, matches, customLeagues, customLeagueStandings }: Props) {
   const { selectedTeamId } = useTeam();
-  const groupIds = Object.keys(standings).sort();
+  const groupIds = Object.keys(standings);
   const allTabIds = [
     ...groupIds,
     ...customLeagues.map((cl) => `cl-${cl.id}`),
